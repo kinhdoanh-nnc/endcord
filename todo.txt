@@ -1,5 +1,3 @@
-Fix messages disappearing
-    after send message at the same time other is received
 Add voice calls in servers
     handle multiple speaking at the same time
 Fix RTP metrics

@@ -1191,29 +1191,29 @@ class ChatGenerator:
 
             elif change_type in (2, 20):   # fully delete messsage / delete when remove pending
                 self.remove_message(change_id)   # change_id is msg_num in this case
-                if change_id != 0:   # have to reconstruct a message bellow, to update separator lines
+                if change_id != 0 and change_type == 2:   # have to reconstruct the message bellow, to update separator lines
+                    # skipped when pending because its simple message update
                     message_index = change_id - 1
                     line_index = self.remove_message(message_index, shift_chat_map=False)
                     if line_index is None:
                         return self.chat, self.chat_format, self.chat_map
-                    if change_type == 2:   # dont reconstruct when removing pending
-                        message_chat, message_format, message_chat_map = self.generate_message(
-                            messages[message_index],
-                            message_index,
-                            roles,
-                            channels,
-                            max_length,
-                            my_roles,
-                            member_roles,
-                            blocked,
-                            last_seen_msg,
-                            show_blocked,
-                            num_messages,
-                            messages[message_index+1] if num_messages > message_index+1 else None,
-                        )
-                        self.insert_data_into(self.chat, message_chat, line_index)
-                        self.insert_data_into(self.chat_format, message_format, line_index)
-                        self.insert_data_into(self.chat_map, message_chat_map, line_index)
+                    message_chat, message_format, message_chat_map = self.generate_message(
+                        messages[message_index],
+                        message_index,
+                        roles,
+                        channels,
+                        max_length,
+                        my_roles,
+                        member_roles,
+                        blocked,
+                        last_seen_msg,
+                        show_blocked,
+                        num_messages,
+                        messages[message_index+1] if num_messages > message_index+1 else None,
+                    )
+                    self.insert_data_into(self.chat, message_chat, line_index)
+                    self.insert_data_into(self.chat_format, message_format, line_index)
+                    self.insert_data_into(self.chat_map, message_chat_map, line_index)
 
             else:   # update existing message and handle pending->sent message transition
                 for message_index, message in enumerate(messages):
