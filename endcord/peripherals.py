@@ -112,7 +112,10 @@ for app_path in (config_path, log_path, temp_path, cache_path, downloads_path):
 
 # platform specific commands
 if sys.platform == "linux":
-    runner = "xdg-open"
+    if shutil.which("xdg-open"):
+        runner = "xdg-open"
+    else:
+        runner = None
     if shutil.which("zenity"):
         filedialog = "zenity"
     elif shutil.which("kdialog"):
@@ -552,7 +555,7 @@ def play_audio(path):
 
 
 def native_open(path, mpv_path="", yt_in_mpv=True):
-    """Open media file in native application, cross-system"""
+    """Open media file in native application, cross-platform"""
     if not path:
         return
     if path.startswith("https://") and "youtu" in path:
@@ -561,8 +564,11 @@ def native_open(path, mpv_path="", yt_in_mpv=True):
         else:
             webbrowser.open(path, new=0, autoraise=True)
             return
-    else:
+    elif runner:
         current_runner = runner
+    else:
+        logger.warning("Could not find runner on this platform")
+        return
     subprocess.Popen(
         [current_runner, path],
         stdout=subprocess.DEVNULL,
@@ -571,7 +577,7 @@ def native_open(path, mpv_path="", yt_in_mpv=True):
 
 
 def find_aspell():
-    """Find aspell exe path on windows system"""
+    """Find aspell executable"""
     if sys.platform == "linux":
         if shutil.which("aspell"):
             return "aspell"

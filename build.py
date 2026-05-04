@@ -176,8 +176,9 @@ def ensure_python(freethreaded, safe=False):
 def check_media_support():
     """Check if media is supported"""
     return (
-        importlib.util.find_spec("PIL") is not None and
         importlib.util.find_spec("av") is not None and
+        importlib.util.find_spec("dave") is not None and
+        importlib.util.find_spec("PIL") is not None and
         importlib.util.find_spec("nacl") is not None
     )
 

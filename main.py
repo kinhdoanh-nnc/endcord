@@ -113,9 +113,8 @@ def main(args):
         sys.exit(0)
     elif args.media:
         if not (
-            importlib.util.find_spec("PIL") is not None and
             importlib.util.find_spec("av") is not None and
-            importlib.util.find_spec("nacl") is not None
+            importlib.util.find_spec("PIL") is not None
         ):
             print("Terminal media player is not supported", file=sys.stderr)
             sys.exit(1)

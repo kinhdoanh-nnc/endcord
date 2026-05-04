@@ -43,9 +43,12 @@ from endcord import (
 from endcord.assist_data import COMMAND_ASSISTS, SEARCH_HELP_TEXT
 
 support_media = (
-    importlib.util.find_spec("PIL") is not None and
     importlib.util.find_spec("av") is not None and
-    importlib.util.find_spec("nacl") is not None
+    importlib.util.find_spec("PIL") is not None
+)
+support_call = (
+    importlib.util.find_spec("dave") is not None and
+    importlib.util.find_spec("nack") is not None
 )
 cythonized = importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.search")
 uses_pgcurses = tui.uses_pgcurses
@@ -5781,8 +5784,7 @@ class Endcord:
         if support_media and not self.config["native_media_player"] and not uses_pgcurses:
             if not self.terminal_media:
                 from endcord import media
-                if support_media:
-                    self.terminal_media = media.TerminalMedia(self.config, self.keybindings)
+                self.terminal_media = media.TerminalMedia(self.config, self.keybindings)
             self.update_extra_line()
             self.tui.pause_curses()
             self.terminal_media.play(path)
@@ -7182,7 +7184,7 @@ class Endcord:
 
     def start_ringing(self, path, loop_delay=1, loop_max=60):
         """Start ringing with specified audio file"""
-        if support_media:
+        if support_media and support_call:
             if not self.terminal_media:
                 from endcord import media
             self.ringer = media.TerminalMedia(self.config, self.keybindings, ui=False)
@@ -7202,8 +7204,8 @@ class Endcord:
 
     def start_call(self, incoming=False, guild_id=None, channel_id=None, enable_input=True):
         """Start voice call"""
-        if not support_media:
-            self.update_extra_line("Failed to start call: No media support.")
+        if not support_media and support_call:
+            self.update_extra_line("Failed to start call: No media/call support.")
             return
 
         self.joining_call = True
