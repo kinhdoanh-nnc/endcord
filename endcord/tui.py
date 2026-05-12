@@ -791,12 +791,15 @@ class TUI():
                     assist_type = ASSIST_TRIGGERS.index(self.input_buffer[self.assist_start-1]) + 1
                     if self.assist_start != 1 and (self.input_buffer[self.assist_start-2] not in (" ", "\n") or self.input_buffer[self.assist_start] in (" ", "\n")):
                         # skip trigger if no space before it
+                        if self.instant_assist:
+                            return self.input_buffer, 5
                         return None, None
                     assist_word = self.input_buffer[self.assist_start : self.input_index]
                     return assist_word, assist_type
                 self.assist_start = -1
                 return None, 100
             if self.assist_start > self.input_index:
+                self.assist_start = -1
                 return None, 100
         if self.enable_autocomplete and self.input_buffer:
             return self.input_buffer, 7

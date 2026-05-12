@@ -33,7 +33,7 @@ match_d_emoji = re.compile(r"<(a?):([a-zA-Z0-9_]+):(\d+)>")
 match_mention = re.compile(r"<@(\d+)>")
 match_role = re.compile(r"<@&(\d+)>")
 match_channel = re.compile(r"<#([\d\/]+)>")
-match_timestamp = re.compile(r"<t:(\d+)(:[tTdDfFR])?>")
+match_timestamp = re.compile(r"<t:(\d+)(:[tTdDfFsSR])?>")
 match_escaped_md = re.compile(r"\\(?=[^a-zA-Z\d\s])")
 match_md_spoiler = re.compile(r"(?<!\\)\|\|.+?\|\|")
 match_md_code_snippet = re.compile(r"(?<!`|\\)`[^`]+`")
@@ -218,7 +218,11 @@ def generate_discord_timestamp(timestamp, discord_format, timezone=True):
         format_string = "%d %b %Y"
     elif discord_format == "F":
         format_string = "%A, %d %b %Y %H:%M"
-    else:
+    elif discord_format == "s":
+        format_string = "d/%m/%Y %H:%M"
+    elif discord_format == "S":
+        format_string = "d/%m/%Y %H:%M:%S"
+    else:   # "f"
         format_string = "%d %b %Y %H:%M"
     return datetime.strftime(time_obj, format_string)
 
@@ -1808,7 +1812,7 @@ class ChatGenerator:
         mentions_this_line = ranges_multiline_one_line(mention_ranges, newline_index+1, 0, quote)
         channels_this_line = ranges_multiline_one_line(channel_ranges, newline_index+1, 0, quote)
         this_line_ranges = (urls_this_line, spoilers_this_line, emoji_this_line, mentions_this_line, channels_this_line)
-        chat_map.append((num, (self.pre_name_len, end_name), False, None, None if group else self.timestamp_range, this_line_ranges, bool(wide)))
+        chat_map.append((num, (self.pre_name_len, end_name), False, None, (0, 0) if group else self.timestamp_range, this_line_ranges, bool(wide)))
 
         # formatting
         len_message_line = len(message_line)
@@ -2332,6 +2336,18 @@ def generate_custom_prompt(text, format_prompt, limit_prompt=15):
     if prompt != format_prompt:
         text = ""
     return prompt
+
+
+def generate_timestamp_assist(value, prefix):
+    """Generate assist for insert_timestamp command"""
+    return (
+        (generate_discord_timestamp(value, "t"), prefix + "<t:" + str(value) + ":t>"),
+        (generate_discord_timestamp(value, "f"), prefix + "<t:" + str(value) + ":f>"),
+        (generate_discord_timestamp(value, "F"), prefix + "<t:" + str(value) + ":F>"),
+        (generate_discord_timestamp(value, "D"), prefix + "<t:" + str(value) + ":D>"),
+        (generate_discord_timestamp(value, "S"), prefix + "<t:" + str(value) + ":S>"),
+        (generate_discord_timestamp(value, "R"), prefix + "<t:" + str(value) + ":R>"),
+    )
 
 
 def generate_log(log, colors, max_width):

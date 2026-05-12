@@ -14,6 +14,8 @@ STATUS_STRINGS = ("online", "idle", "dnd", "invisible")
 TIME_FORMATS = ("%Y-%m-%d", "%Y-%m-%d-%H-%M", "%H:%M:%S", "%H:%M")
 TIME_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
 NOTIFICATION_VALUES = ("all", "mentions", "nothing", "default", "suppress_everyone", "suppress_roles")
+PAST_WORDS = {"ago", "earlier", "before", "last"}
+FUTURE_WORDS = {"in", "later", "after", "next"}
 
 match_from = re.compile(r"from:<@\d*>")
 match_mentions = re.compile(r"mentions:<@\d*>")
@@ -22,6 +24,11 @@ match_before = re.compile(r"before:\d{4}-\d{2}-\d{2}")
 match_after = re.compile(r"after:\d{4}-\d{2}-\d{2}")
 match_in = re.compile(r"in:<#\d*>")
 match_pinned = re.compile(r"pinned:(?:true|false)")
+match_time = re.compile(r"\b([1-9])\s?(am|pm)\b")   # 1 pm, 1am
+match_time_zero = re.compile(r"\b(0[1-9]|1\d|2[0-4])(?:\s?(am|pm))?\b")   # 00, 01, 11, 24, 01pm, 11pm, 21pm, 01 am
+match_time_clock = re.compile(r"\b([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?(?:\s?(am|pm))?\b")   # 22:59, 03:33 AM, 03:33pm, 11:11:11 am
+match_duration = re.compile(r"(\d+(?:\.\d+)?)\s*(s|sec|second|m|min|minute|h|hr|hour|d|day|w|week|mo|mon|month|y|yr|year)\b")
+
 
 match_setting = re.compile(r"(\w+) ?= ?(.+)")
 match_channel = re.compile(r"<#(\d*)>")
@@ -84,6 +91,115 @@ def time_string_seconds(time_str):
     if not total:
         return 0
     return total
+
+
+def rel_months_to_seconds(n, from_dt, direction):
+    """Convert N months (can be float) to seconds relative to given datetime object in given direction"""
+    whole = int(n)
+    remainder = n - whole
+    num_months = whole + (1 if remainder else 0)
+    total_seconds = 0.0
+    for i in range(num_months):
+        month_offset = from_dt.month + i * direction
+        year  = from_dt.year + (month_offset - 1) // 12
+        month = (month_offset - 1) % 12 + 1
+        days  = (datetime(year + (month == 12), month % 12 + 1, 1) - datetime(year, month, 1)).days
+        total_seconds += days * (remainder if (i == whole) else 1.0) * 86400
+    return total_seconds
+
+
+def parse_time(text):
+    """
+    Smart time parser. Convert strings to timestamp:
+    5pm; 13; 3pm tomorrow; 2d ago; 1h 30m; 2 weeks later; 3pm 2d ago; tomorrow 4pm;
+    after 2hr 15min; in 3d; 23:42:42 AM; 5m ago; in 1.5mo; 5 min ago; 05 in 3 days;
+    3 days ago 22; after 5 days 03:33 AM
+    """
+    text = text.strip().lower()
+    text = " ".join((w.rstrip("s") for w in text.split(" ")))   # remove S from the end of all words
+    words = set(text.split(" "))
+    target = datetime.now().astimezone()
+
+    if not text:
+        return int(target.timestamp())
+
+    # exact matches
+    if text == "today":
+        return int(target.timestamp())
+    if text == "tomorrow":
+        return int((target + timedelta(days=1)).timestamp())
+    if text == "yesterday":
+        return int((target - timedelta(days=1)).timestamp())
+
+    # direction
+    if words & FUTURE_WORDS:
+        sign = 1
+    elif words & PAST_WORDS:
+        sign = -1
+    else:
+        sign = 1
+
+    # relative day keywords
+    if "tomorrow" in words:
+        target += timedelta(days=1)
+    if "yesterday" in words:
+        target -= timedelta(days=1)
+
+    # duration combinations only around future/past words - consume that string
+    total = 0.0
+    for match in re.finditer(match_duration, text):
+        value, unit = match.groups()
+        full = match.group()
+        if unit.startswith("s"):
+            total += float(value)   # seconds
+        elif unit.startswith("mi") or unit == "m":
+            total += float(value) * 60   # minutes
+        elif unit.startswith("h"):
+            total += float(value) * 3600   # hours
+        elif unit.startswith("d"):
+            total += float(value) * 86400   # days
+        elif unit.startswith("h"):
+            total += float(value) * 604800   # weeks
+        elif unit.startswith("mo"):
+            total += rel_months_to_seconds(float(value), target, sign)   # months (30 days)
+        elif unit.startswith("y"):
+            total += float(value) * 31536000   # years (365 days)
+        text.replace(full, "").replace(full + "s", "")   # consume match
+    if total:
+        target += timedelta(seconds=(total * sign))
+
+    # from the rest: parse clock time and replace in built time obj
+    match = re.search(match_time, text)
+    minute = None
+    second = None
+    am_pm_group = 2
+    if not match:
+        match = re.search(match_time_clock, text)
+        if match:
+            minute = match.group(2)
+            second = match.group(3)
+            am_pm_group = 4
+    if not match:
+        match = re.search(match_time_zero, text)
+    if match:
+        text.replace(match.group(), "")   # consume match
+        hour = int(match.group(1))
+        am_pm = match.group(am_pm_group)
+        if set(text.split(" ")) - (FUTURE_WORDS | PAST_WORDS):
+            if am_pm:
+                if hour >= 24:
+                    return None
+                if am_pm == "pm" and hour != 12:
+                    hour += 12
+                if am_pm == "am" and hour == 12:
+                    hour = 0
+            target = target.replace(
+                hour=hour,
+                minute=(int(minute) if minute else 0),
+                second=(int(second) if second else 0),
+            )
+
+    return int(target.timestamp())
 
 
 def read_value(text, idx):

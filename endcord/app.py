@@ -70,6 +70,7 @@ GUILD_UPLOAD_LIMITS = (10*MB, 10*MB, 50*MB, 100*MB)   # premium tier 0, 1, 2, 3
 FORUM_COMMANDS = (1, 2, 7, 13, 14, 15, 17, 20, 22, 25, 27, 29, 30, 31, 32, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 81)
 COLLAPSE_ALL_EXCEPT_OPTIONS = ("current", "selected", "above", "bellow")
 STANDING_TYPES = ("All Good", "Limited", "Very Limited", "At risk", "Suspended")
+ASSISTED_COMMANDS = ("set ", "string_select ", "set_notifications ", "game_detection_blacklist ", "switch_tab ", "goto ", "collapse_all_except ", "insert_timestamp ", "voice_set_input_device ")
 
 match_emoji = re.compile(r"<:(.*):(\d*)>")
 match_youtube = re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}")
@@ -1534,12 +1535,16 @@ class Endcord:
                         mention = None
                     else:
                         mention = self.reply_mention
-                    self.replying = {
-                        "id": message["id"],
-                        "username": message["username"],
-                        "global_name": message["global_name"],
-                        "mention": mention,
-                    }
+                    if self.replying["id"] == message["id"]:
+                        self.reset_states(replying=True)
+                        self.restore_input_text = (input_text, "standard")
+                    else:
+                        self.replying = {
+                            "id": message["id"],
+                            "username": message["username"],
+                            "global_name": message["global_name"],
+                            "mention": mention,
+                        }
 
             # edit
             elif action == 2 and self.messages:
@@ -5370,7 +5375,7 @@ class Endcord:
 
 
     def assist(self, assist_word, assist_type, query_results=None):
-        """Assist when typing: channel, username, role, emoji and sticker"""
+        """Generate and show various assists when typing"""
         self.assist_type = assist_type
         self.assist_found = []
 
@@ -5521,6 +5526,10 @@ class Endcord:
                     score_cutoff=self.assist_score_cutoff,
                 )
 
+            elif assist_word.lower().startswith("insert_timestamp "):
+                value = parser.parse_time(assist_word[17:])
+                self.assist_found = formatter.generate_timestamp_assist(value, assist_word[:17])
+
             elif assist_word.lower().startswith("voice_set_input_device "):
                 self.assist_found = search.search_mics(
                     peripherals.get_audio_input_devices(),
@@ -5593,7 +5602,6 @@ class Endcord:
 
     def stop_assist(self, close=True):
         """Stop assisting and hide assist UI"""
-        self.tui.instant_assist = False
         if self.assist_word:
             if close:
                 self.close_extra_window()
@@ -5605,6 +5613,8 @@ class Endcord:
             if (self.search or self.search_gif or self.command) and self.extra_bkp:
                 self.extra_window_open = True
                 self.tui.draw_extra_window(self.extra_bkp[0], self.extra_bkp[1], select=True)
+        else:
+            self.tui.instant_assist = False
 
 
     def stop_extra_window(self, update=True):
@@ -5646,7 +5656,7 @@ class Endcord:
             insert_string = f"<;{self.assist_found[index][1]};>"   # format: "<;ID;>"
         elif self.assist_type == 5:   # command
             if self.assist_found[index][1]:
-                if input_text.endswith(" ") and input_text not in ("set ", "string_select ", "set_notifications ", "game_detection_blacklist ", "switch_tab ", "goto ", "collapse_all_except ", "voice_set_input_device "):
+                if input_text.endswith(" ") and input_text not in ASSISTED_COMMANDS:
                     self.tui.instant_assist = False
                     command_type, command_args = parser.command_string(input_text)
                     self.close_extra_window()
@@ -8207,7 +8217,7 @@ class Endcord:
             if assist_type and not self.uploading:
                 if assist_type == 100 and self.assist_type != 5:   # esc or " " in assist_word or backspace:
                     self.stop_assist()
-                elif assist_type == 100:
+                elif assist_type == 100 and self.command:
                     self.assist(self.tui.input_buffer, 5)
                 elif assist_type == 6:   # app commands
                     if assist_word != self.assist_word and not (self.disable_sending or self.forum):
