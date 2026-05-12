@@ -84,7 +84,8 @@
 - `mark_as_unread`  
     Mark selected message as unread.
 - `insert_timestamp [time]`  
-    Insert timestamp in input line, `[time]` can be of formats: `YYYY-MM-DD-HH-mm`, `YYYY-MM-DD`, `HH:mm`, `HH:mm:SS`.
+    Insert timestamp in input line, `[time]/[timestamp]` can be of formats: `YYYY-MM-DD-HH-mm`, `YYYY-MM-DD`, `HH:mm`, `HH:mm:SS` or a timestamp from assist.  
+    Assist will accept time formats similar to `@time`. Eg.: `tomorrow 2PM`, `2 days ago 03:42 AM`, `in 2 w`...
 - `vote [num]`  
     If selected message is ongoing poll, vote for specified answer index.
 - `pin_message`  

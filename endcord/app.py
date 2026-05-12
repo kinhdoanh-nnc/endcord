@@ -3267,7 +3267,6 @@ class Endcord:
 
         elif cmd_type == 33:   # INSERT_TIMESTAMP
             timestamp = cmd_args["timestamp"]
-            timestamp = f"<t:{timestamp}>"
             for num, channel in enumerate(self.input_store):
                 if channel["id"] == self.active_channel["channel_id"]:
                     input_text = self.input_store[num]["content"]

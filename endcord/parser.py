@@ -720,13 +720,16 @@ def command_string(text):
     # 33 - INSERT_TIMESTAMP
     elif text_lower.startswith("insert_timestamp"):
         cmd_type = 33
-        try:
-            date_string = text.split(" ")[1]
-            timestamp = date_to_timestamp(date_string)
-            cmd_args = {"timestamp": timestamp}
-        except (IndexError, ValueError):
-            cmd_type = 0
-            cmd_args = {"value": 1}
+        date_string = text[17:].strip()
+        if date_string.startswith("<t:") and date_string.endswith(">"):
+            cmd_args = {"timestamp": date_string.strip()}
+        else:
+            try:
+                timestamp = f"<t:{date_to_timestamp(date_string)}>"
+                cmd_args = {"timestamp": timestamp}
+            except (IndexError, ValueError):
+                cmd_type = 0
+                cmd_args = {"value": 1}
 
     # 34 - VOTE
     elif text_lower.startswith("vote"):

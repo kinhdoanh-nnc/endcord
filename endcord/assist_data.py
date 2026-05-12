@@ -55,7 +55,7 @@ COMMAND_ASSISTS = (
     ("vote [num] - vote for specified answer index on active poll message", "vote"),
     ("paste - paste image or file as attachment or text from clipboard", "paste"),
     ("record_voice_message [cancel] - start/stop/cancel recording voice message", "record_voice_message"),
-    ("insert_timestamp YYYY-MM-DD-HH-mm / YYYY-MM-DD / HH:mm / HH:mm:SS - insert timestamp", "insert_timestamp"),
+    ("insert_timestamp [time]/[tiampmest] - insert timestamp, use assist for more options", "insert_timestamp"),
     ("set_notifications *<#[channel_id]> ... - show and modify server/channel notification settings", "set_notifications"),
     ("check_standing - check account standing, anything non-100 is concerning", "check_standing"),
     ("custom_status [string] - set custom status text", "custom_status"),
