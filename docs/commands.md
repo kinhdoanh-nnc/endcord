@@ -30,9 +30,9 @@
     Download and copy selected attachment to clipboard. Only file reference is sent to clipboard, so if endcord is closed, file will likely be missing.  
 - `spoil`  
     Reveal one-by-one spoiler in selected message.
-- `link_channel` / `link_channel <#[channel_id]>`  
+- `copy_channel_link` / `copy_channel_link <#[channel_id]>`  
     Copy link of selected channel in tree to clipboard, or from provided channel id.
-- `link_message`  
+- `copy_message_link`  
     Copy link of selected message to clipboard,
 - `cancel *[download/1/uploa/2/attachment/3]`  
     Cancel all downloads and/or uploads. Can use `cancel 1` or `cancel download`... Use just `cancel` to cancel both downloads and uploads.

@@ -1022,7 +1022,7 @@ def format_poll(poll):
 class ChatGenerator:
     """Chat generator class"""
 
-    def __init__(self, config, colors, colors_formatted, my_id, placeholder_emoji, placeholder_images):
+    def __init__(self, config, colors, colors_formatted, my_id, placeholder_emoji, placeholder_images, font_ratio=2.25):
         # load from config
         self.format_message = config["format_message"]
         self.format_message_grouped = config["format_message_grouped"]
@@ -1049,7 +1049,7 @@ class ChatGenerator:
         self.trim_embed_url_size = max(config["trim_embed_url_size"], 20)
         self.dynamic_name_len = config["dynamic_name_len"]
         self.limit_chat_buffer = config["limit_chat_buffer"]
-        self.font_aspect_ratio = config["media_font_aspect_ratio"]
+        self.font_ratio = font_ratio
         self.placeholder_emoji = "  " if placeholder_emoji else None
         self.placeholder_images = (config["inline_media_height"] + 1) if placeholder_images else None
 
@@ -1633,12 +1633,12 @@ class ChatGenerator:
                     if self.trim_embed_url_size:
                         embed_url = trim_string(embed_url, self.trim_embed_url_size)
                     content += f"[{clean_type(embed["type"])} embed]: {embed_url}"
-                if self.placeholder_images and embed["proxy_url"] and embed["hw"]:
-                    h = embed["hw"][0] / self.font_aspect_ratio
+                if self.placeholder_images and embed.get("proxy_url") and embed["hw"]:
+                    h = embed["hw"][0] / self.font_ratio
                     w = embed["hw"][1]
-                    scale = min(self.placeholder_images / h, (max_length - self.newline_len) / w)
+                    scale = min(self.placeholder_images / h, (max_length - self.newline_len) / w, 1)
                     h = int(h * scale)
-                    w = int(w * scale) - 1
+                    w = int(w * scale)
                     content += "\n" * h
                     # content += ("\n" + "#" * w) * h
                     image_locations.append((h, w))
@@ -2007,7 +2007,7 @@ class ChatGenerator:
                 chat_map[idx][5][5].append(image_location[1])   # width
                 chat_map[idx][5][5].append(num_e)   # embed index
                 if idx_rel == 0:
-                    chat_map[idx][5][5].append(image_location[1])   # height
+                    chat_map[idx][5][5].append(image_location[0])   # height
             start_y += image_location[0] + 1
 
         # reactions

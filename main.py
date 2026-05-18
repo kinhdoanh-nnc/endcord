@@ -9,6 +9,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 import traceback
 
@@ -23,6 +24,7 @@ from endcord import arg, config, defaults, peripherals, utils
 VERSION = "1.5.0"
 default_config_path = peripherals.config_path
 log_path = peripherals.log_path
+threading.stack_size(512 * 1024)
 uses_pgcurses = hasattr(curses, "PGCURSES")
 
 logger = logging

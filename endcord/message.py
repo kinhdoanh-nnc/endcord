@@ -216,7 +216,7 @@ def prepare_message(message):
             "name": attachment["filename"],
             "url": attachment["url"],
             "proxy_url": attachment.get("proxy_url"),
-            "hw": (attachment["height"], attachment["width"]),
+            "hw": (attachment["height"], attachment["width"]) if "height" in attachment else None,
         })   # keep attachments in same place as embeds (attachments have no "main_url")
     message, embeds = content_to_attachment(message, embeds)
     # mentions

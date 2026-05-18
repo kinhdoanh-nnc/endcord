@@ -10,7 +10,7 @@ import os
 import shutil
 import socket
 import subprocess
-from urllib.parse import urlencode, urlparse
+import urllib.parse
 
 from endcord import peripherals
 
@@ -126,7 +126,7 @@ def check_for_update(current_version, owner, repo):
 
 def search_gh_repos(topic, num=30, page=1, official_maintainer=peripherals.REPO_OWNER):
     """Search github repositories"""
-    query = urlencode({
+    query =  urllib.parse.urlencode({
         "q": f"topic:{topic}",
         "per_page": num,
         "page": page,
@@ -197,7 +197,7 @@ def download_gh_repo(owner, repo, save_path, tag=None):
                 return []
             redirects += 1
             connection.close()
-            parsed = urlparse(location)
+            parsed =  urllib.parse.urlparse(location)
             if parsed.netloc:
                 host = parsed.netloc
             if parsed.path:

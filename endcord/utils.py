@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 import filetype
 
@@ -176,7 +177,7 @@ def load_json(file, default=None, dir_path=peripherals.config_path, create=False
             save_json(default, file, dir_path=dir_path)
         return default
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
             if default:
                 for key, value in default.items():
@@ -191,7 +192,7 @@ def save_json(data, file, compact=False, dir_path=peripherals.config_path):
     if not os.path.exists(dir_path):
         os.makedirs(os.path.expanduser(dir_path), exist_ok=True)
     path = os.path.expanduser(os.path.join(dir_path, file))
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         if compact:
             json.dump(data, f, indent=None, separators=(",", ":"))
         else:
@@ -328,6 +329,24 @@ def json_array_objects(stream):
         buf = buf[i:]   # keep incomplete json only
 
 
+def delete_old_files(directory, days, accessed=False):
+    """Delete files accessed/created older than N days"""
+    directory = os.path.expanduser(directory)
+    if not os.path.exists(directory):
+        return
+    cutoff = time.time() - (days * 86400)
+    for name in os.listdir(directory):
+        path = os.path.join(directory, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            file_time = os.path.getatime(path) if accessed else os.path.getctime(path)
+            if file_time < cutoff:
+                os.remove(path)
+        except OSError:
+            pass
+
+
 def get_base_path():
     """Get resource path"""
     if hasattr(sys, "_MEIPASS"):   # pyinstaller onefile
@@ -344,9 +363,8 @@ def load_emoji(path="emoji.json"):
     global EMOJI_DATA
     path = os.path.join(get_base_path(), *path.split("/"))
     if not os.path.exists(path):
-        logger.info(path)
         return
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         EMOJI_DATA = json.load(f)
 
 

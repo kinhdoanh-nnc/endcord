@@ -16,6 +16,7 @@ TIME_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
 NOTIFICATION_VALUES = ("all", "mentions", "nothing", "default", "suppress_everyone", "suppress_roles")
 PAST_WORDS = {"ago", "earlier", "before", "last"}
 FUTURE_WORDS = {"in", "later", "after", "next"}
+MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
 
 match_from = re.compile(r"from:<@\d*>")
 match_mentions = re.compile(r"mentions:<@\d*>")
@@ -113,11 +114,12 @@ def parse_time(text):
     Smart time parser. Convert strings to timestamp:
     5pm; 13; 3pm tomorrow; 2d ago; 1h 30m; 2 weeks later; 3pm 2d ago; tomorrow 4pm;
     after 2hr 15min; in 3d; 23:42:42 AM; 5m ago; in 1.5mo; 5 min ago; 05 in 3 days;
-    3 days ago 22; after 5 days 03:33 AM
+    3 days ago 22; after 5 days 03:33 AM; 10th july; may 22 10 pm; 11.12.2026 13:37
     """
     text = text.strip().lower()
     text = " ".join((w.rstrip("s") for w in text.split(" ")))   # remove S from the end of all words
-    words = set(text.split(" "))
+    words_list = text.split(" ")
+    words = set(words_list)
     target = datetime.now().astimezone()
 
     if not text:
@@ -145,6 +147,35 @@ def parse_time(text):
     if "yesterday" in words:
         target -= timedelta(days=1)
 
+    # month month dates
+    month = None
+    for i, word in enumerate(words):
+        if word in MONTHS:
+            month = MONTHS.index(word) + 1
+            break
+    if month:
+        full = word
+        day = 1
+        try:
+            day = int(words_list[max(i-1, 0)].rstrip("th"))
+            full = f"{word} {day}"
+        except (ValueError, IndexError):
+            day = int(words_list[max(i+1, 0)].rstrip("th"))
+            full = f"{word} {day}"
+        target = target.replace(month=month, day=day, hour=12, minute=0, second=0)
+        text = text.replace(full, "")   # consume match
+
+    # match dates
+    for word in words:
+        if word.count(".") == 2:
+            day, month, year = word.split(".")
+            try:
+                target = target.replace(year=int(year), month=int(month), day=int(day), hour=12, minute=0, second=0)
+                text = text.replace(word, "")   # consume match
+            except ValueError:
+                pass
+            break
+
     # duration combinations only around future/past words - consume that string
     total = 0.0
     for match in re.finditer(match_duration, text):
@@ -158,13 +189,13 @@ def parse_time(text):
             total += float(value) * 3600   # hours
         elif unit.startswith("d"):
             total += float(value) * 86400   # days
-        elif unit.startswith("h"):
+        elif unit.startswith("w"):
             total += float(value) * 604800   # weeks
         elif unit.startswith("mo"):
             total += rel_months_to_seconds(float(value), target, sign)   # months (30 days)
         elif unit.startswith("y"):
             total += float(value) * 31536000   # years (365 days)
-        text.replace(full, "").replace(full + "s", "")   # consume match
+        text = text.replace(full + "s", "").replace(full, "")   # consume match
     if total:
         target += timedelta(seconds=(total * sign))
 
@@ -182,7 +213,7 @@ def parse_time(text):
     if not match:
         match = re.search(match_time_zero, text)
     if match:
-        text.replace(match.group(), "")   # consume match
+        text = text.replace(match.group(), "")   # consume match
         hour = int(match.group(1))
         am_pm = match.group(am_pm_group)
         if set(text.split(" ")) - (FUTURE_WORDS | PAST_WORDS):
@@ -601,15 +632,15 @@ def command_string(text):
         search_text = text[7:].strip(" ")
         cmd_args = {"search_text": search_text}
 
-    # 17 - LINK_CHANNEL
-    elif text_lower.startswith("link_channel"):
+    # 17 - COPY_CHANNEL_LINK
+    elif text_lower.startswith("copy_channel_link"):
         cmd_type = 17
         match = re.search(match_channel, text)
         if match:
             cmd_args = {"channel_id": match.group(1)}
 
-    # 18 - LINK_MESSAGE
-    elif text_lower.startswith("link_message"):
+    # 18 - COPY_MESSAGE_LINK
+    elif text_lower.startswith("copy_message_link"):
         cmd_type = 18
 
     # 19 - GOTO_MENTION

@@ -4,6 +4,7 @@
 # the Free Software Foundation, version 3.
 
 import curses
+import glob
 import importlib.util
 import logging
 import os
@@ -35,6 +36,7 @@ from endcord import (
     perms,
     rpc,
     search,
+    terminal_utils,
     tui,
     utils,
 )
@@ -148,12 +150,16 @@ class Endcord:
         self.vim_mode = config["vim_mode"]
         self.notifications_pfp = config["notifications_pfp"]
         self.silence_threshold = config["call_silence_threshold"]
-        self.inline_media = False   # config["inline_media"]
+        self.font_ratio = config["media_font_aspect_ratio"]
+        self.inline_media = config["inline_media"] and support_media
         self.inline_media_height = config["inline_media_height"]
         self.inline_media_download_height = config["inline_media_download_height"]
         self.placeholder_emoji = False   # for extensions
         self.placeholder_images = self.inline_media   # keeping this separated so extension can toggle it
 
+        if not self.font_ratio:
+            h, w = terminal_utils.get_font_size()
+            self.font_ratio = (w / h) if h else 2.25
         if not self.external_editor or not shutil.which(self.external_editor):
             self.external_editor = os.environ.get("EDITOR", "nano")
             if not shutil.which(self.external_editor):
@@ -214,6 +220,8 @@ class Endcord:
         self.tabs_names = []
         self.last_summary_save = time.time() - SUMMARY_SAVE_INTERVAL - 1
         self.new_version = None
+        if self.inline_media:
+            self.image_cache = {}
 
         # get client properties
         if config["client_properties"].lower() == "anonymous":
@@ -279,6 +287,7 @@ class Endcord:
             self.my_id,
             self.placeholder_emoji,
             self.placeholder_images,
+            font_ratio=self.font_ratio,
         )
         self.premium = None    # same
         self.my_user_data = None    # same
@@ -326,6 +335,7 @@ class Endcord:
         self.terminal_media = None
         self.prev_volume_out = 100
         self.prev_volume_in = 100
+        self.chat_update = threading.Event()
         # threading.Thread(target=self.profiling_auto_exit, daemon=True).start()
 
         # init sigint handler - replaces handler from main.py
@@ -560,6 +570,85 @@ class Endcord:
                 self.send_desktop_message_notification(message, avatar_id)
             finally:
                 self.notify_queue.task_done()
+
+
+    def inline_media_handler(self):
+        """Thread that waits for chat content changes, downloads thumbs and triggers inline media drawing"""
+        image_cache_path = os.path.expanduser(os.path.join(peripherals.cache_path, "images"))
+        use_blocks = self.config["media_use_blocks"]
+        while self.run:
+            self.chat_update.wait()
+            self.chat_update.clear()
+            visible = []
+            image_cache = {}
+            force_draw = False
+
+            for rel_y, line_map in enumerate(self.chat_map):
+                if not line_map:
+                    continue
+                if not line_map[5]:
+                    continue
+                img_pos = line_map[5][5]
+                if not img_pos or len(img_pos) < 4:
+                    continue
+                rel_x, w, embed_idx, h, = img_pos
+
+                # get message and image info
+                try:
+                    message = self.messages[line_map[0]]
+                    message_id = message["id"]
+                    embed = message["embeds"][embed_idx]
+                    img_url = embed["proxy_url"]
+                    img_h, img_w = embed["hw"]
+                    scale = min(w * 2 / img_w, h * (1 + use_blocks) * 2 / img_h, 1)
+                    img_w = int(img_w * scale)
+                    img_h = int(img_h * scale)
+                    image_id = f"{message_id}_{embed_idx}"
+                except IndexError:
+                    continue
+
+                # download and cache (disk and ram)
+                if image_id not in self.image_cache:
+                    img_format = "webp" if support_media else "png"
+                    img_quality = "&quality=lossless" if support_media and "//media." in img_url else ""
+                    if img_url.endswith("&"):
+                        img_url += "="
+                    if "?" not in img_url:
+                        img_url += "?"
+
+                    # reuse larger cached image or delete smaller
+                    for path in glob.glob(os.path.join(image_cache_path, f"{image_id}_*")):
+                        try:
+                            filename = os.path.splitext(os.path.basename(path))[0]
+                            _, _, new_w, new_h = filename.split(".")[0].split("_")
+                            if int(new_w) >= img_w:
+                                img_w = int(new_w)
+                                img_h = int(new_h)
+                                break
+                            else:
+                                os.remove(path)
+                                break   # assuming only one can exist
+                        except Exception:
+                            pass
+
+                    # download
+                    img_url = f"{img_url}&format={img_format}{img_quality}&width={img_w}&height={img_h}"
+                    img_name = f"{image_id}_{img_w}_{img_h}.{img_format}"
+                    image_path = self.discord.get_file(img_url, image_cache_path, file_name=img_name, cache=True)
+                    image_cache[image_id] = (image_path, rel_y, rel_x)
+                    force_draw = True
+                visible.append(image_id)
+
+            # delete cache
+            for key, data in image_cache.items():
+                self.image_cache[key] = data
+            to_delete = [k for k in self.image_cache if k not in visible]
+            for image_id in to_delete:
+                self.image_cache.pop(image_id)
+
+            if image_cache != self.image_cache or force_draw:
+                self.image_cache = image_cache
+                # self.on_chat_draw(force=True)
 
 
     def reset(self, online=False):
@@ -2226,11 +2315,8 @@ class Endcord:
                                     self.go_to_message(message_id)
                         elif clicked_type == 10:   # embed image
                             url = self.messages[msg_index]["embeds"][clicked_id]["url"]
-                            if support_media and shutil.which(self.config["yt_dlp_path"]) and shutil.which(self.config["mpv_path"]):
-                                self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(url, False, True)))
-                                self.download_threads[-1].start()
-                            else:
-                                webbrowser.open(url, new=0, autoraise=True)
+                            self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(url, False, True)))
+                            self.download_threads[-1].start()
 
             # single click on extra line
             elif action == 48:
@@ -3040,7 +3126,7 @@ class Endcord:
                 self.tui.draw_extra_window(extra_title, extra_body)
                 self.extra_window_open = True
 
-        elif cmd_type == 17:   # LINK_CHANNEL
+        elif cmd_type == 17:   # COPY_CHANNEL_LINK
             channel_id = cmd_args.get("channel_id")
             guild_id = None
             if channel_id:
@@ -3052,7 +3138,7 @@ class Endcord:
                 url = f"https://{self.discord.host}/channels/{guild_id}/{channel_id}"
                 peripherals.copy_to_clipboard(url)
 
-        elif cmd_type == 18:   # LINK_MESSAGE
+        elif cmd_type == 18:   # COPY_MESSAGE_LINK
             msg_index = self.lines_to_msg(chat_sel)
             if msg_index is None:
                 return
@@ -4543,7 +4629,7 @@ class Endcord:
         """Thread that uploads file to currently open channel"""
         path = os.path.expanduser(path)
         if not os.path.exists(path):
-            self.update_extra_line("Cant upload file: file does not exist")
+            self.update_extra_line("Cant upload file: file doesn't exist")
             return
         if os.path.isdir(path):
             self.update_extra_line("Cant upload directory")
@@ -5808,15 +5894,18 @@ class Endcord:
                 if self.config["custom_media_terminal"]:
                     self.update_extra_line()
                     self.tui.pause_curses()
-                cmd = [self.config["custom_media_player"], path]
+                exec_path = self.config["custom_media_player"]
+                if exec_path.startswith("bash"):
+                    cmd = ["bash", os.path.expanduser(exec_path[5:]), path]
+                elif shutil.which(exec_path):
+                    cmd = [exec_path, path]
+                else:
+                    exec_path = os.path.expanduser(exec_path)
+                    if os.path.isfile(exec_path) and os.access(exec_path, os.X_OK):
+                        cmd = [exec_path, path]
                 if self.config["custom_media_hint"]:
                     cmd.append(media_hint)
-                subprocess.run(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                )
+                subprocess.run(cmd, check=False)
                 if self.config["custom_media_terminal"]:
                     time.sleep(0.1)
                     self.tui.resume_curses()
@@ -5824,7 +5913,7 @@ class Endcord:
         if support_media and not self.config["native_media_player"] and not uses_pgcurses:
             if not self.terminal_media:
                 from endcord import media
-                self.terminal_media = media.TerminalMedia(self.config, self.keybindings)
+                self.terminal_media = media.TerminalMedia(self.config, self.keybindings, font_ratio=self.font_ratio)
             self.update_extra_line()
             self.tui.pause_curses()
             self.terminal_media.play(path)
@@ -5897,6 +5986,7 @@ class Endcord:
         elif keep_selected is not None:
             self.tui.set_selected(-1, scroll=scroll, draw=False)   # return to bottom
 
+        self.chat_update.set()
         self.execute_extensions_methods("on_chat_update", self.chat, self.chat_format, self.chat_map, cache=True)
         self.tui.update_chat(self.chat, self.chat_format)
 
@@ -7824,9 +7914,17 @@ class Endcord:
         )
 
         # start daemon threads
-        threading.Thread(target=self.wait_input, daemon=True, args=()).start()
+        threading.Thread(target=self.wait_input, daemon=True).start()
         threading.Thread(target=self.message_sender, daemon=True).start()
         threading.Thread(target=self.notification_sender, daemon=True).start()
+        threading.Thread(target=self.extra_line_remover, daemon=True).start()
+        if self.inline_media:
+            threading.Thread(target=self.inline_media_handler, daemon=True).start()
+            threading.Thread(target=utils.delete_old_files, daemon=True, args=(   # might delay startup
+                os.path.join(peripherals.cache_path, "images"),
+                self.config["max_thumb_cache_age"],
+                True,
+            )).start()
 
         # start RPC server
         if self.enable_rpc:
@@ -7840,9 +7938,6 @@ class Endcord:
                 self.state["games_blacklist"],
                 self.game_detection_download_delay,
             )
-
-        # start extra line remover thread
-        threading.Thread(target=self.extra_line_remover, daemon=True).start()
 
         # check for updates
         threading.Thread(target=self.check_for_updates, daemon=True, args=()).start()

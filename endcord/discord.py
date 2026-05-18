@@ -701,20 +701,32 @@ class Discord():
         return False
 
 
-    def get_file(self, url, save_path):
+    def get_file(self, url, save_path, file_name=None, cache=False):
         """Download file from discord with proper header"""
         message_data = None
         url_object = urllib.parse.urlsplit(url)
-        filename = os.path.basename(url_object.path)
+
+        save_path = os.path.expanduser(save_path)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        if file_name and cache:
+            destination = os.path.join(save_path, file_name)
+            if os.path.exists(destination):
+                return destination
+        if not file_name:
+            file_name = os.path.basename(url_object.path)
+
         connection = self.get_connection(url_object.netloc, 443)
         connection.request("GET", url_object.path + "?" + url_object.query, message_data, self.header)
         response = connection.getresponse()
+
         extension = response.getheader("Content-Type").split("/")[-1].replace("jpeg", "jpg")
-        destination = os.path.join(save_path, filename)
+        destination = os.path.join(save_path, file_name)
         if os.path.splitext(destination)[-1] == "":
             destination = destination + "." + extension
         with open(destination, mode="wb") as file:
             file.write(response.read())
+            return destination
 
 
     def send_message(self, channel_id, message_content, reply_id=None, reply_channel_id=None, reply_guild_id=None, reply_ping=True, attachments=None, stickers=None, nonce=None):

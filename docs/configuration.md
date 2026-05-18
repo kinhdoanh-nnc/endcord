@@ -105,6 +105,9 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Whether to mute video in media player or not. If true, will not initialize audio at all.
 - `media_cap_fps = 30`  
     Maximum framerate when playing videos.
+- `media_font_aspect_ratio = None`  
+    Font height/width ratio is automatically queried from terminal. But it may fail, in that case default `2.25` value is used.  
+    If pictures appear wider or narower change this to value = `char_w / char_h`, eg. `18 / 8 = 2.25`.
 - `inline_media = False`  
     Draw inline images in chat. Requires media support (not endcord-lite). Currently does nothing.
 - `inline_media_height = 10`  
@@ -169,7 +172,9 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 - `custom_ringtone_outgoing = None`  
     Path to audio file played when there is outgoing call. Set to `None` to disable. The file will be played in loop.
 - `custom_media_player = None`  
-    Custom script, command, or path to executable that will be used to play media. File path will be passed as first argument. Do not use custom arguments, instead write bash wrapper script that will pass file to specific command. If paired with `custom_media_hint`, the script can be made to decide between multiple media player based on media type.
+    Custom script, command, or path to executable that will be used to play media. Dont forget to make it executable. Can also run `bash path/to/file.sh`.  
+    Prebuilt script already exists [here](https://github.com/sparklost/endcord/blob/main/tools/endcord-custom-media.sh), configuration instructions are in the script.  
+    File path will be passed as first argument. Do not use custom arguments, instead write bash wrapper script that will pass file to specific command. If paired with `custom_media_hint`, the script can be made to decide between multiple media player based on media type.
 - `custom_media_blacklist = None`  
     List of media types to be ignored for custom media player and will be played in endcord builtin or with native media player. Available options: `"img"`, `"gif"`, `"video"`, `"audio"`, `"URL"`, `"YT"`. Example to allow only images and gifs: `["img", "gif"]`.
 - `custom_media_terminal = False`  
@@ -333,8 +338,6 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Characters used to draw in terminal. From darkest to brightest. Same character can be repeated. Number of characters is not fixed.
 - `media_saturation = 1.2`  
     Saturation correction applied to image in order to make colors more visible. Adjust if changing `ascii_palette` or media_color_bg.
-- `media_font_aspect_ratio = 2.25`  
-    Font height/width ratio. Change only if picture dimensions ratio is wrong in terminal.
 
 ### Colors and attributes
 Colors are part of the theme, configured as 2 or 3 values in a list: `[foreground, background, attribute]`  

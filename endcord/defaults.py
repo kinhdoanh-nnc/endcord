@@ -47,6 +47,7 @@ settings = {
     "aspell_lang": "en_US",
     "media_mute": False,
     "media_cap_fps": 30,
+    "media_font_aspect_ratio": None,
     "inline_media": True,
     "inline_media_height": 16,
     "inline_media_download_height": 256,
@@ -184,7 +185,6 @@ theme = {
     "media_truecolor": True,
     "media_ascii_palette": "  ..',;:c*loexk#O0XNW",
     "media_saturation": 1.2,
-    "media_font_aspect_ratio": 2.25,
     "media_color_bg": 16,
     "media_bar_ch": "━",
 }
