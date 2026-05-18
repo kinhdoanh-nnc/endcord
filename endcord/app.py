@@ -151,7 +151,7 @@ class Endcord:
         self.notifications_pfp = config["notifications_pfp"]
         self.silence_threshold = config["call_silence_threshold"]
         self.font_ratio = config["media_font_aspect_ratio"]
-        self.inline_media = config["inline_media"] and support_media
+        self.inline_media = False   # config["inline_media"] and support_media
         self.inline_media_height = config["inline_media_height"]
         self.inline_media_download_height = config["inline_media_download_height"]
         self.placeholder_emoji = False   # for extensions
