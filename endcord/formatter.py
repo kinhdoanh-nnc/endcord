@@ -53,7 +53,7 @@ match_md_all = re.compile(
     """,
     re.VERBOSE,
 )
-
+MARKER = "\uEE42"  # character from private use area
 
 def ceil(x):
     """To avoid importing math.ceil"""
@@ -1022,7 +1022,7 @@ def format_poll(poll):
 class ChatGenerator:
     """Chat generator class"""
 
-    def __init__(self, config, colors, colors_formatted, my_id, placeholder_emoji, placeholder_images, font_ratio=2.25):
+    def __init__(self, config, colors, colors_formatted, my_id, placeholder_emoji, placeholder_images, font_ratio=2.25, dpw=1):
         # load from config
         self.format_message = config["format_message"]
         self.format_message_grouped = config["format_message_grouped"]
@@ -1050,8 +1050,9 @@ class ChatGenerator:
         self.dynamic_name_len = config["dynamic_name_len"]
         self.limit_chat_buffer = config["limit_chat_buffer"]
         self.font_ratio = font_ratio
+        self.dpw = dpw   # "dots" per character width
         self.placeholder_emoji = "  " if placeholder_emoji else None
-        self.placeholder_images = (config["inline_media_height"] + 1) if placeholder_images else None
+        self.placeholder_images = (config["inline_media_height"]) if placeholder_images else None
 
         # load colors
         self.color_default = [colors[0]]
@@ -1121,7 +1122,7 @@ class ChatGenerator:
             .replace("%timestamp", self.placeholder_timestamp)
             .replace("%content", ""),
             )
-        self.pre_reaction_len = len(
+        self.pre_reactions_len = len(
             self.format_reactions
             .replace("%timestamp", self.placeholder_timestamp)
             .replace("%reactions", ""),
@@ -1637,11 +1638,13 @@ class ChatGenerator:
                 if self.placeholder_images and embed.get("proxy_url") and embed["hw"]:
                     h = embed["hw"][0] / self.font_ratio
                     w = embed["hw"][1]
-                    scale = min(self.placeholder_images / h, (max_length - self.newline_len) / w, 1)
-                    h = int(h * scale)
-                    w = int(w * scale)
-                    content += "\n" * h
-                    # content += ("\n" + "#" * w) * h
+                    smallest_h = h / self.dpw
+                    smallest_w = w / self.dpw
+                    scale = min(min(self.placeholder_images, smallest_h) / h, min(max_length - 1 - self.newline_len, smallest_w) / w, 1)
+                    h = round(h * scale)
+                    w = round(w * scale) - 1
+                    content += f"\n<{MARKER}:{num_e}>" + "\n " * (h - 1)
+                    # content += f"\n<{MARKER}:{num_e}>" + ("\n" + "#" * w) * (h - 1)
                     image_locations.append((h, w))
         for sticker in message["stickers"]:
             sticker_type = sticker["format_type"]
@@ -2000,16 +2003,28 @@ class ChatGenerator:
             line_num += 1
 
         # update image_locations y and add them to ranges in chat_map for this message base line
-        start_y = len(chat_map) - (sum(h[0] + 1 for h in image_locations)) + 1
-        for num_e, image_location in enumerate(image_locations):   # y is relative to message base line
+        start_y = len(chat_map) + 1
+        len_images = len(image_locations)
+        for idx_i, image_location in enumerate(reversed(image_locations)):   # y is relative to message base line
+            num_i = len_images - idx_i - 1
+            start_y -= image_location[0] + 1
+            # search for marker on this line and above
+            marker = f"<{MARKER}:{num_i}>"
+            shift = 0
+            while chat[start_y-shift][self.newline_len:] != marker:
+                shift += 1
+                if start_y - shift < 0:
+                    break
+            if start_y - shift < 0:
+                continue
+            chat[start_y-shift] = chat[start_y-shift][:self.newline_len] + " "
             for idx_rel in range(image_location[0]):
-                idx = start_y + idx_rel
+                idx = start_y - shift + idx_rel
                 chat_map[idx][5][5].append(self.newline_len)   # start_x
                 chat_map[idx][5][5].append(image_location[1])   # width
-                chat_map[idx][5][5].append(num_e)   # embed index
+                chat_map[idx][5][5].append(num_i)   # embed index
                 if idx_rel == 0:
                     chat_map[idx][5][5].append(image_location[0])   # height
-            start_y += image_location[0] + 1
 
         # reactions
         if message["reactions"]:
@@ -2045,7 +2060,7 @@ class ChatGenerator:
             for num_r, reaction in enumerate(reactions):
                 wide = not self.emoji_as_text and len(message["reactions"][num_r]["emoji"]) == 1   # emoji reaction will be one character
                 emoji_id = message["reactions"][num_r]["emoji_id"]
-                reactions_map.append([self.pre_reaction_len + offset+1, self.pre_reaction_len + len(reaction) + wide + offset, emoji_id])
+                reactions_map.append([self.pre_reactions_len + offset+1, self.pre_reactions_len + len(reaction) + wide + offset, emoji_id])
                 offset += len(self.reactions_separator) + len(reaction) + wide
             chat_map.append((num, None, False, reactions_map, None, None, bool(wide)))
 

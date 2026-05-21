@@ -161,8 +161,8 @@ class Endcord:
         self.placeholder_images = self.inline_media   # keeping this separated so extension can toggle it
 
         if not self.font_ratio:
-            h, w = terminal_utils.get_font_size()
-            self.font_ratio = (w / h) if h else 2.25
+            self.font_w, self.font_h = terminal_utils.get_font_size()
+            self.font_ratio = (self.font_h / self.font_w) if self.font_h else 2.25
         if not self.external_editor or not shutil.which(self.external_editor):
             self.external_editor = os.environ.get("EDITOR", "nano")
             if not shutil.which(self.external_editor):
@@ -291,6 +291,7 @@ class Endcord:
             self.placeholder_emoji,
             self.placeholder_images,
             font_ratio=self.font_ratio,
+            dpw=self.font_w if self.font_w else 1,
         )
         self.premium = None    # same
         self.my_user_data = None    # same
@@ -604,7 +605,7 @@ class Endcord:
                     embed = message["embeds"][embed_idx]
                     img_url = embed["proxy_url"]
                     img_h, img_w = embed["hw"]
-                    scale = min(w * 2 / img_w, h * (1 + use_blocks) * 2 / img_h, 1)
+                    scale = min(h * (1 + use_blocks) * 2 / img_h, w * 2 / img_w, 1)
                     img_w = int(img_w * scale)
                     img_h = int(img_h * scale)
                     image_id = f"{message_id}_{embed_idx}"
@@ -2735,9 +2736,10 @@ class Endcord:
                         self.update_extra_line("Nothing happens.")
                     if not text_to_send.strip():
                         continue
-                    if input_text.startswith("+:") and utils.is_emoji(text_to_send[1:]):
+                    if input_text.startswith("+:") and (utils.is_emoji(text_to_send[1:]) or bool(re.search(formatter.match_d_emoji, text_to_send[2:]))):
                         msg_index = self.lines_to_msg(chat_sel)
-                        self.build_reaction(text_to_send[1:], msg_index=msg_index)
+                        discord_emoji = input_text.startswith("+:<")
+                        self.build_reaction(text_to_send[1 + discord_emoji:], msg_index=msg_index)
                         continue
                     if len(text_to_send) > self.limit_msg_len:
                         self.update_extra_line(f"Cant send a message: text is too long ({self.limit_msg_len - len(text_to_send)})")
@@ -5796,6 +5798,8 @@ class Endcord:
             # default emoji - :emoji_name:
             # discord emoji format: "<:name:ID>"
             insert_string = self.assist_found[index][1]
+            if input_text.startswith("+:") and start == 2 and insert_string.startswith("<:"):
+                insert_string = ":" + insert_string
         elif self.assist_type == 4:   # sticker
             insert_string = f"<;{self.assist_found[index][1]};>"   # format: "<;ID;>"
         elif self.assist_type == 5:   # command
@@ -8234,7 +8238,6 @@ class Endcord:
             new_chat_dim = self.tui.get_dimensions()[0]
             if new_chat_dim != self.chat_dim:
                 if self.chat_dim[1] != new_chat_dim[1]:
-                    self.execute_extensions_methods("on_resize")
                     self.update_tabs()
                     if self.forum:
                         self.update_forum()

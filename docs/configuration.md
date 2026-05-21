@@ -110,7 +110,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     If pictures appear wider or narower change this to value = `char_w / char_h`, eg. `18 / 8 = 2.25`.
 - `inline_media = False`  
     Draw inline images in chat. Requires media support (not endcord-lite). Currently does nothing.
-- `inline_media_height = 10`  
+- `inline_media_height = 14`  
     Height of DISPLAYED image in chat. In number of characters.
 - `inline_media_quality = "low"`  
     Quality of downloaded image thumb for chat inline media. Has no effect in endcord-lite. Possible options are: `lossless`, `high`, `'low`.

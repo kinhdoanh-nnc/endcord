@@ -49,7 +49,7 @@ settings = {
     "media_cap_fps": 30,
     "media_font_aspect_ratio": None,
     "inline_media": True,
-    "inline_media_height": 16,
+    "inline_media_height": 14,
     "inline_media_quality": "low",
     "rpc_external": True,
     "emoji_as_text": False,

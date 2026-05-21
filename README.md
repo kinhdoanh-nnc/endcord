@@ -24,7 +24,7 @@ Third party endcord forks may add features that can lead to account ban, contain
 - Vim-mode
 - Integrated RPC (only Rich Presence) and game detection
 - Mouse controls
-- Kitty protocol images (through extensions: [1](https://github.com/sparklost/endcord-image-emoji))
+- Kitty protocol images (through extensions: [1](https://github.com/sparklost/endcord-image-emoji), [[2](https://github.com/sparklost/endcord-inline-image)])
 - Login with email, 2fa, QR code, or paste token
 - Desktop notifications
 - View images, gifs, videos, audio, stickers and YouTube with ASCII art or in external app
@@ -471,7 +471,7 @@ Anonymized data that might help in debugging is saved in `Debug` directory, see 
 All channel and server names, topics, descriptions are replaced. All channel and server IDs are added to random number and hashed, so they are irreversible changed, and will be different on each run.
 
 ### Note on Python performance misconceptions
-Python is slower than languages like C or Rust, but in this use case it does not affect performance. Endcord is event-driven and network-bound not CPU-bound, so Python’s overhead is negligible (significantly reduced when built with nuitka). And all CPU-critical components are implemented in Cython. Python was chosen because it enables rapid development.
+Python is slower than languages like C or Rust, but in this use case it does not affect performance. Endcord is event-driven and network-bound, not CPU-bound, so Python’s overhead is negligible (significantly reduced when built with nuitka). And all CPU-critical components are implemented in Cython. Python was chosen because it enables rapid development.
 
 ### Running multiple endcord instances
 To run multiple endcord instances at the same time, while keeping them completely separated, run endcord with `ENDCORD_APP_NAME` environment variable set to something else. This will change "endcord" everywhere: in config and cache paths, notifications, keyring...

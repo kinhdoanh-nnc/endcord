@@ -83,7 +83,6 @@ Method names can be searched in `./endcord/app.py` code to see where they are ex
 - `on_switch_channel_start` - near start of switch_channel, after self.active_channel is updated
 - `on_switch_channel_end` - near end of switch_channel, before UI is updated
 - `on_reconnect` - near end of reconnect, before UI is updated
-- `on_resize` - in main loop, when screen geometry change is detected, before all other resize actions and after self.chat_dim is updated
 - `on_escape_key` - near end escape key handling in wait_input
 - `on_chat_update` - at the end of update_chat in app.py, but before chat is updated in tui.py, arguments: chat, chat_format, chat_map
 - `on_chat_draw` - at the end of draw_chat method in tui.py
