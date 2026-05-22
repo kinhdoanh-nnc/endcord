@@ -1753,7 +1753,7 @@ class TUI():
                 self.draw_extra_line(self.extra_line_text)
                 self.draw_member_list(self.member_list, self.member_list_format, force=True)
                 self.draw_chat()
-        self.execute_extensions_methods("on_extra_window_remove", cache=False)
+        self.execute_extensions_methods("on_extra_window_remove")
 
 
     def draw_member_list(self, member_list, member_list_format, force=False, reset=False, clean=True):

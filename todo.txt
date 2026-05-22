@@ -1,8 +1,5 @@
-endcord-image-inline
+endcord-image-inline/emoji
     Fix thread unsafe when send message ? or typing ?
-    Fix some emoji from tree is messing kitty images
-endcord-image-emoji
-    test thread unsafe when send message ? or typing ?
 
 Add inline media drawing
     add inline_media_handler
@@ -28,6 +25,7 @@ Add scrollbar to chat
 Add colors and formatting in assist window
 Add favorite gifs
 Add ability to switch profile without closing
+Add multiline reactions
 Add spoiler to inline media (double click to spoil, next to open)
 Fix RTP metrics
 

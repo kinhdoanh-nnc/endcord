@@ -1562,6 +1562,12 @@ class ChatGenerator:
 
         # main message
         global_name = get_global_name(message, self.use_nick) if self.use_global_name else ""
+        if "bot" in message:
+            app_string = self.app_string_format.replace("%app", "App - Ephemeral" if message["bot"] == 2 else "App")
+        elif "webhook" in message:
+            app_string = self.app_string_format.replace("%app", "Webhook")
+        else:
+            app_string = None
         if group:
             placeholder_message = self.format_message_grouped.replace("%timestamp", self.placeholder_timestamp).replace("%edited", "").split("%content")[0]
             pre_content_len = len(placeholder_message)
@@ -1578,7 +1584,7 @@ class ChatGenerator:
                 .replace("%global_name", " " * name_len)
                 .replace("%timestamp", self.placeholder_timestamp)
                 .replace("%edited", "")
-                .replace("%app", "")
+                .replace("%app", app_string if app_string else "")
             ).split("%content")[0]
             pre_content_len = len(placeholder_message)
         else:
@@ -1658,12 +1664,6 @@ class ChatGenerator:
                 content += f"[lottie sticker]: {sticker["name"]}"
             else:
                 content += f"[gif sticker]: {sticker["name"]}"
-        if "bot" in message:
-            app_string = self.app_string_format.replace("%app", "App - Ephemeral" if message["bot"] == 2 else "App")
-        elif "webhook" in message:
-            app_string = self.app_string_format.replace("%app", "Webhook")
-        else:
-            app_string = None
         message_line = lazy_replace(
             self.format_message_grouped if group else self.format_message,
             "%username",
