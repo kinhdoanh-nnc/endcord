@@ -1416,7 +1416,7 @@ class TUI():
         total_lines = len(self.chat_buffer)
 
         # clculate thumb size and pos
-        if total_lines < h:
+        if total_lines <= h:
             thumb_size = 0
             thumb_pos = 0
         else:

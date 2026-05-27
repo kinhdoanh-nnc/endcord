@@ -42,8 +42,8 @@ def prepare_embeds(embeds, message_content):
         embed_type = embed.get("type", "unknown")
 
         if "url" in embed and "tenor.com/" not in embed["url"] and "giphy.com/" not in embed["url"]:
-            # dont repeat unless its discord attachment and handle x=twitter
-            if embed_type != "rich" or ".discordapp." in embed["url"] or embed["url"] not in message_content.replace("https://x.com", "https://twitter.com"):
+            # dont repeat unless its not discord attachment and handle x=twitter
+            if (embed_type != "rich" and ".discordapp." not in embed["url"]) or embed["url"] not in message_content.replace("https://x.com", "https://twitter.com"):
                 content.append(embed["url"])
                 main_url = embed["url"]
                 skip_main_url = True
@@ -88,7 +88,6 @@ def prepare_embeds(embeds, message_content):
         if "footer" in embed and "text" in embed["footer"]:
             content.append(quote(embed["footer"]["text"]))
             media += [False] * len(re.findall(match_url, embed["footer"]["text"]))
-
         content = "\n".join(content)
         if content:
             if content == message_content:
@@ -112,13 +111,11 @@ def content_to_attachment(message, embeds):
     """Convert attachment url in message content into real attachment"""
     content = message["content"]
     if any(x in content for x in DISCORDAPP_CDN_ATTACHMENTS):
-
         matches = []
         def collect(m):
             matches.append((m.group(0), m.group(1)))
             return ""
         message["content"] = match_discord_attachment_url.sub(collect, content)
-
         for attachment in matches:
             for embed in embeds:
                 if embed["url"].split("?")[0] == attachment[0].split("?")[0]:   # query url part usually changes
@@ -129,7 +126,6 @@ def content_to_attachment(message, embeds):
                     "url": attachment[0],
                     "name": attachment[1],
                 })
-
     return message, embeds
 
 

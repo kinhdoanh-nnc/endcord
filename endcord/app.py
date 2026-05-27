@@ -4708,7 +4708,8 @@ class Endcord:
             self.remove_running_task("Downloading file", 2)
             if move:
                 self.update_extra_line(f"File saved to {utils.collapseuser(self.downloads_path)}")
-            self.update_extra_line()
+            else:
+                self.update_extra_line()
 
         if open_media:
             self.media_thread = threading.Thread(target=self.open_media, daemon=True, args=(destination, ))
