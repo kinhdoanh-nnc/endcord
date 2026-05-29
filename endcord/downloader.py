@@ -5,6 +5,8 @@
 
 import logging
 import os
+import re
+import socket
 import urllib.parse
 
 import urllib3
@@ -14,6 +16,31 @@ from endcord import peripherals
 
 CHUNK_SIZE = 1024 * 1024   # load max 1MB data in RAM when downloading
 logger = logging.getLogger(__name__)
+
+
+def get_tenor_gif(url, header=None, proxy=None):
+    """Request tenor gif page and extract direct gif url"""
+    if "tenor.com/" not in url:
+        return
+    parsed = urllib.parse.urlsplit(url)
+    try:
+        connection = peripherals.get_connection(parsed.netloc, 443, proxy=proxy)
+        if header:
+            connection.request("GET", parsed.path, headers=header)
+        else:
+            connection.request("GET", parsed.path)
+        response = connection.getresponse()
+    except (socket.gaierror, TimeoutError):
+        connection.close()
+        return None
+    if response.status == 200:
+        match = re.search(r'<link\s+rel="image_src"\s+href="([^"]+\.gif)"', response.read().decode())
+        if not match:
+            return None
+        return match.group(1)
+    connection.close()
+    logger.error(f"Failed fetching tenor gif page, http error code: {response.status}")
+    return None
 
 
 def convert_tenor_gif_type(url, content_type):

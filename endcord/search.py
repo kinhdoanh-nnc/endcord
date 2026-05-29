@@ -248,7 +248,7 @@ def search_usernames_roles(roles, query_results, guild_id, gateway, query, prese
     return sorted(results, key=lambda x: x[2], reverse=True)
 
 
-def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_emoji=False, limit=50, score_cutoff=15):
+def search_emojis(all_emojis, favorite_emojis, local_emojis, premium, guild_id, query, safe_emoji=False, limit=50, score_cutoff=15):
     """Search for emoji"""
     results = []
     worst_score = score_cutoff
@@ -265,7 +265,7 @@ def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_em
             emojis = []
 
     # favorites
-    for emoji_name in favorite_emojis:
+    for emoji_name in chain(local_emojis, favorite_emojis):
         try:
             int(emoji_name)   # if success its discord emoji id
             for guild in emojis:
@@ -275,7 +275,7 @@ def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_em
                         break
                 else:
                     continue
-                formatted = f"{guild_emoji["name"]} ({guild_name})"
+                formatted = f"** {guild_emoji["name"]} ({guild_name})"
                 if query.startswith("**"):
                     score = 1000 + fuzzy_match_score(query[2:].strip(), formatted)
                 else:
@@ -301,7 +301,7 @@ def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_em
             else:
                 formatted += " - " + data[0]
             if query.startswith("**"):
-                score = 1000 + fuzzy_match_score(query[2:].strip(), formatted)
+                score = 1000 + fuzzy_match_score(query[3:].strip(), formatted)
             else:
                 score = fuzzy_match_score(query, formatted) * 2
             if score < worst_score:
@@ -315,7 +315,7 @@ def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_em
     for guild in emojis:
         guild_name = guild["guild_name"]
         for guild_emoji in guild["emojis"]:
-            formatted = f"{guild_emoji["name"]} ({guild_name})"
+            formatted = f" {guild_emoji["name"]} ({guild_name})"
             score = fuzzy_match_score(query, formatted)
             if score < worst_score:
                 continue
@@ -330,7 +330,7 @@ def search_emojis(all_emojis, favorite_emojis, premium, guild_id, query, safe_em
             # utils.EMOJI_DATA = {emoji: {":emoji_name:", ":alias:"}...}
             if any((0x1F3FB <= ord(ch) <= 0x1F3FF) for ch in key):
                 continue   # skip variation emoji
-            formatted = ""
+            formatted = " "
             if not safe_emoji:
                 formatted += str(key)
             if len(data) > 1:

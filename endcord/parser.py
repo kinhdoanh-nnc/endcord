@@ -679,8 +679,7 @@ def command_string(text):
     # 23 - REACT
     elif text_lower.startswith("react"):
         cmd_type = 23
-        react_text = text[6:].strip(" ")
-        cmd_args = {"react_text": react_text}
+        cmd_args = {"text": text[6:].strip(" ")}
 
     # 24 - SHOW_REACTIONS
     elif text_lower.startswith("show_reactions"):
@@ -1169,5 +1168,15 @@ def command_string(text):
             cmd_args = {"value": int(text[15:])}
         except ValueError:
             cmd_args = {"value": text[15:].strip()}
+
+    # 84 - FAVORITE_EMOJI
+    elif text_lower.startswith("favorite_emoji"):
+        cmd_type = 84
+        emoji = text[15:].strip(" ")
+        if emoji:
+            cmd_args = {"text": emoji}
+        else:
+            cmd_type = 0
+            cmd_args = {"value": 1}
 
     return cmd_type, cmd_args

@@ -379,6 +379,7 @@ state = {
     "folder_names": [],
     "tabbed_channels": [],
     "recent_channels": [],
+    "favorite_emojis": [],
     "volume_out": 100,
     "volume_in": 100,
     "audio_input_device": None,

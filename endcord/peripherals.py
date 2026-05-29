@@ -3,10 +3,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, version 3.
 
+import http.client
 import importlib.util
 import logging
 import os
 import shutil
+import ssl
 import struct
 import subprocess
 import sys
@@ -14,6 +16,8 @@ import threading
 import time
 import urllib.parse
 import webbrowser
+
+import socks
 
 if sys.platform.startswith("android"):
     sys.platform = "linux"
@@ -577,6 +581,37 @@ def native_open(path, mpv_path="", yt_in_mpv=True):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def get_connection(host, port=443, timeout=2, proxy=None):
+    """Get connection object and handle proxying"""
+    if sys.platform == "darwin":
+        import certifi
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+    else:
+        ssl_context = ssl.create_default_context()
+    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+    if not proxy:
+        proxy = ""
+    proxy = urllib.parse.urlsplit(proxy)
+    if proxy.scheme:
+        if proxy.scheme.lower() == "http":
+            connection = http.client.HTTPSConnection(proxy.hostname, proxy.port, timeout=timeout, context=ssl_context)
+            connection.set_tunnel(host, port=port)
+        elif "socks" in proxy.scheme.lower():
+            proxy_sock = socks.socksocket()
+            proxy_sock.set_proxy(socks.SOCKS5, proxy.hostname, proxy.port)
+            proxy_sock.settimeout(timeout)
+            proxy_sock.connect((host, port))
+            proxy_sock = ssl_context.wrap_socket(proxy_sock, server_hostname=host)
+            connection = http.client.HTTPSConnection(host, port, timeout=timeout + 5)   # extra time for tor
+            connection.sock = proxy_sock
+        else:
+            connection = http.client.HTTPSConnection(host, port, timeout=timeout, context=ssl_context)
+    else:
+        connection = http.client.HTTPSConnection(host, port, timeout=timeout, context=ssl_context)
+    return connection
 
 
 def find_aspell():

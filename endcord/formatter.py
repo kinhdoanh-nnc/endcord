@@ -2871,7 +2871,10 @@ def generate_extra_window_assist(found, assist_type, max_len, placeholder_emoji=
         title_line = "Unknown"
     for item in found:
         if placeholder_emoji and assist_type == 3 and item[1].startswith("<:"):
-            body.append(f"    - {item[0]}"[:max_len])
+            if item[0].startswith("** "):
+                body.append(f"**    - {item[0][3:]}"[:max_len])
+            else:
+                body.append(f"    - {item[0]}"[:max_len])
         else:
             body.append(f"{prefix}{item[0]}"[:max_len])
     if not body:

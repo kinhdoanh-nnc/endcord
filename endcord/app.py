@@ -71,7 +71,7 @@ USER_UPLOAD_LIMITS = (10*MB, 50*MB, 500*MB, 50*MB)   # premium tier 0, 1, 2, 3 (
 GUILD_UPLOAD_LIMITS = (10*MB, 10*MB, 50*MB, 100*MB)   # premium tier 0, 1, 2, 3
 LIMIT_MSG_LEN = 2000
 LIMIT_MSG_LEN_PREMIUM = 4000
-FORUM_COMMANDS = (1, 2, 7, 13, 14, 15, 17, 20, 22, 25, 27, 29, 30, 31, 32, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 81, 83)
+FORUM_COMMANDS = (1, 2, 7, 13, 14, 15, 17, 20, 22, 25, 27, 29, 30, 31, 32, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 81, 83, 84)
 COLLAPSE_ALL_EXCEPT_OPTIONS = ("current", "selected", "above", "bellow")
 STANDING_TYPES = ("All Good", "Limited", "Very Limited", "At risk", "Suspended")
 ASSISTED_COMMANDS = ("set ", "string_select ", "set_notifications ", "game_detection_blacklist ", "switch_tab ", "goto ", "collapse_all_except ", "insert_timestamp ", "voice_set_input_device ", "switch_profile ", "gif ")
@@ -1918,7 +1918,7 @@ class Endcord:
                             continue
                         repo = self.search_results[extra_selected]
                         from endcord import git
-                        status, message = git.install_extension(repo[0] + "/" + repo[1], cli=False)
+                        status, message = git.install_extension(repo[0] + "/" + repo[1], cli=False, proxy=self.config["proxy"])
                         self.stop_extra_window()
                         self.update_extra_line(message)
                         self.restore_input_text = (input_text, "standard")
@@ -3181,7 +3181,7 @@ class Endcord:
             self.toggle_member_list()
 
         elif cmd_type == 23:   # REACT
-            react_text = cmd_args.get("react_text")
+            react_text = cmd_args.get("text")
             msg_index = self.lines_to_msg(chat_sel)
             if msg_index is None:
                 return
@@ -3897,14 +3897,14 @@ class Endcord:
         elif cmd_type == 72:   # INSTALL_EXTENSION
             if cmd_args["text"]:
                 from endcord import git
-                status, message = git.install_extension(cmd_args["text"], cli=False)
+                status, message = git.install_extension(cmd_args["text"], cli=False, proxy=self.config["proxy"])
                 self.update_extra_line(message)
             else:   # update
                 threading.Thread(target=self.check_for_updates, daemon=True, args=(True, False, False, True, True)).start()
 
         elif cmd_type == 73:   # SEARCH_EXTENSIONS
             from endcord import git
-            extensions = git.search_gh_repos("endcord-extension")
+            extensions = git.search_gh_repos("endcord-extension", proxy=self.config["proxy"])
             if extensions:
                 self.tui.disable_wrap_around(True)
                 max_w = self.tui.get_dimensions()[2][1]
@@ -4034,6 +4034,42 @@ class Endcord:
                 self.update_extra_line(f'Profile "{name}" not found.')
             if name == self.profiles["selected"]:
                 self.update_extra_line(f'Profile "{name}" is currently in use.')
+
+        elif cmd_type == 84:   # FAVORITE_EMOJI
+            emoji_string = cmd_args["text"]
+            valid = False
+            if emoji_string.startswith("<:"):   # discord emoji
+                # validate discord emoji before adding it
+                match = re.match(match_emoji, emoji_string)
+                if match:
+                    emoji_id = match.group(2)
+                    for guild in self.gateway.get_emojis():
+                        if not self.premium and guild["guild_id"] != self.active_channel["guild_id"]:
+                            continue
+                        for guild_emoji in guild["emojis"]:
+                            if guild_emoji["id"] == emoji_id:
+                                valid = True
+                                emoji_string = emoji_id
+                                break
+                        if valid or not self.premium:
+                            break
+            elif emoji_string.startswith(":"):   # standard emoji :name:
+                for emoji in utils.EMOJI_DATA.values():
+                    if emoji_string in emoji:
+                        emoji_string = min(emoji, key=len).strip(":")
+                        valid = True
+                        break
+            elif utils.is_emoji(emoji_string):   # standard emoji char
+                valid = True
+                emoji_string = utils.demojize(emoji_string).strip(":")
+            if valid and emoji_string:
+                if emoji_string in self.state["favorite_emojis"]:
+                    self.state["favorite_emojis"].remove(emoji_string)
+                    self.update_extra_line(f'Emoji "{emoji_string}" removed from favorites')
+                else:
+                    self.state["favorite_emojis"].append(emoji_string)
+                    self.update_extra_line(f'Emoji "{emoji_string}" added to favorites')
+                utils.save_json(self.state, f"state_{self.profiles["selected"]}.json")
 
         if success is None:
             self.gateway.set_offline()
@@ -5372,22 +5408,14 @@ class Endcord:
                     if len(all_reactions) < 20 or add_to_existing:
                         # validate discord emoji before adding it
                         if not valid:
-                            if self.premium:
-                                for guild in self.gateway.get_emojis():
-                                    for guild_emoji in guild["emojis"]:
-                                        if guild_emoji["id"] == emoji_id:
-                                            valid = True
-                                            break
-                                    if valid:
+                            for guild in self.gateway.get_emojis():
+                                if not self.premium and guild["guild_id"] != self.active_channel["guild_id"]:
+                                    continue
+                                for guild_emoji in guild["emojis"]:
+                                    if guild_emoji["id"] == emoji_id:
+                                        valid = True
                                         break
-                            else:
-                                for guild in self.gateway.get_emojis():
-                                    if guild["guild_id"] != self.active_channel["guild_id"]:
-                                        continue
-                                    for guild_emoji in guild["emojis"]:
-                                        if guild_emoji["id"] == emoji_id:
-                                            valid = True
-                                            break
+                                if valid or not self.premium:
                                     break
                         if valid:
                             success = self.discord.send_reaction(
@@ -5541,6 +5569,7 @@ class Endcord:
             self.assist_found = search.search_emojis(
                 self.gateway.get_emojis(),
                 self.discord.get_settings_proto(2)["favoriteEmojis"].get("emojis", []),
+                self.state["favorite_emojis"],
                 self.premium,
                 self.active_channel["guild_id"],
                 assist_word,
@@ -7767,7 +7796,7 @@ class Endcord:
         text = ""
 
         if app:
-            self.new_version = git.check_for_update(last_check["version"], peripherals.REPO_OWNER, peripherals.APP_NAME)
+            self.new_version = git.check_for_update(last_check["version"], peripherals.REPO_OWNER, peripherals.APP_NAME, proxy=self.config["proxy"])
             last_check["version"] = self.new_version if self.new_version else last_check["version"]
             if self.new_version:
                 text = "New endcord version is available:" + f" {peripherals.VERSION} -> {self.new_version}; Click to open github releases."
@@ -7791,11 +7820,11 @@ class Endcord:
                     ext_version = extension.EXT_VERSION
                 if "github.com" not in extension.EXT_SOURCE:
                     continue
-                new_version = git.check_for_update(ext_version, repo_owner, repo_name)
+                new_version = git.check_for_update(ext_version, repo_owner, repo_name, proxy=self.config["proxy"])
                 last_check["extensions"][repo_name] = new_version if new_version else ext_version
                 if new_version:
                     if update:
-                        status, status_text = git.install_extension(extension.EXT_SOURCE, prefer_tag=new_version, update=True)
+                        status, status_text = git.install_extension(extension.EXT_SOURCE, prefer_tag=new_version, update=True, proxy=self.config["proxy"])
                         if status in (0, 1, 3, 4) and force:
                             self.update_extra_line(status_text.replace("installed", "updated"))
                             force = False   # to skip next update_extra_line

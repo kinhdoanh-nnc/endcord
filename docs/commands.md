@@ -112,6 +112,8 @@
     Toggle showing messages from blocked users in chat. Toggles between `blocked_mode` setting and fully shown messages.
 - `view_emoji *[emoji/num]`  
     Download specified custom emoji and show it in media player. If number or nothing is specified it will show emoji from selected line in chat.
+- `favorite_emoji [emoji]`  
+    Add/remove specified emoji from local favorites. Favorites are saved in state file.
 - `goto_mention` / `goto_mention [num]`  
     Go to channel/message mentioned in selected message.
 - `voice_start_call`  
