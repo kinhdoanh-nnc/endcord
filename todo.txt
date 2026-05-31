@@ -12,17 +12,13 @@ Add --minimal option to build script (rempves numpy orjson soundcard)
 Remove ruff and uv
 
 Fix RTP metrics
+Fix some emoji are drawn as text
 Fix issues with wide characters in input line
 Add option to select individual message
 Fix per-channel member list
 Rewrite experimental mode in not-pygame
 Video, stage and stream calls
 Localization
-
-after fixing https://github.com/python/cpython/issues/119138
-    Add colors for status sign in selected, muted and active dm in tree
-    Add red fg white bg color for selected + unread in tree
-    Add red fg gray bg color for active + unread in tree
 
 Extensions:
 endcord-termux-rich

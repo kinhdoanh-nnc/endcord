@@ -407,7 +407,8 @@ Every next list has additional `start` and `end`- indexes on a line where color 
 - `color_tree_active = [255, 234]`  
 - `color_tree_unseen = [255, -1, "b"]`  
 - `color_tree_mentioned = [197, -1]`  
-- `color_tree_active_mentioned = [197, 234]`
+- `color_tree_active_mentioned = [197, 234]`  
+- `color_tree_selected_mentioned = [124, 255]`  
 - `color_format_message = [[-1, -1], [242, -2, 0, 0, 7], [25, -2, 0, 8, 9], [25, -2, 0, 19, 20]]`  
     Color format for message base string. Corresponding to `format_message`.
 - `color_format_message_grouped = [[-1, -1], [242, -2, 0, 1, 2]]`  

@@ -238,6 +238,7 @@ class TUI():
         self.init_pair((208, tree_bg))   # orange
         self.init_pair((196, tree_bg))   # red
         self.init_pair(config["color_extra_window"])   # 21
+        self.init_pair(config["color_tree_selected_mentioned"])
         curses.init_pair(255, config["color_default"][0], config["color_default"][1])   # temporary
         self.default_color = 255
         self.role_color_start_id = self.last_free_id   # starting id for role colors
@@ -1562,7 +1563,10 @@ class TUI():
                         color = curses.color_pair(9) | self.attrib_map[9]
                         color_line = curses.color_pair(6)
                     if y == self.tree_selected - self.tree_index:   # selected
-                        color = curses.color_pair(4) | self.attrib_map[4]
+                        if second_digit == 2:   # selected mentioned
+                            color = curses.color_pair(22) | self.attrib_map[22]
+                        else:
+                            color = curses.color_pair(4) | self.attrib_map[4]
                         color_line = curses.color_pair(4)
                         self.tree_selected_abs = self.tree_selected + skipped
                         selected = True
