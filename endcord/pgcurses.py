@@ -82,7 +82,7 @@ elif sys.platform == "win32":
     config_path = os.path.join(os.environ["LOCALAPPDATA"], APP_NAME, "pgcurses.json")
 elif sys.platform == "darwin":
     config_path = f"~/Library/Application Support/{APP_NAME.lower()}/pgcurses.json"
-#config_path = os.environ.get("PGCURSES_CONFIG")
+# config_path = os.environ.get("PGCURSES_CONFIG")
 
 # load config
 if config_path:
@@ -478,6 +478,7 @@ def render(screen, buffer, dirty_lines, dirty_lock, ncols, char_width, char_heig
 
         dirty_lines.clear()
 
+
 # use cython if available, ~1.5 times faster insstr and ~1.3 times faster render
 if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.pgcurses"):
     from endcord_cython.pgcurses import insstr, render
@@ -516,7 +517,7 @@ class Window:
     def screen_resize(self):
         """Internal function used to update screen dimensions on VIDEORESIZE event"""
         global screen
-        self.ncols = screen.get_width()  // self.char_width
+        self.ncols = screen.get_width() // self.char_width
         self.nlines = screen.get_height() // self.char_height
         with self.dirty_lock:
             self.buffer = [[(" ", 0) for _ in range(self.ncols)]for _ in range(self.nlines)]
@@ -843,41 +844,51 @@ def color_pair(color_id):
     """curses.color_pair clone using pygame, returns color id"""
     return color_id
 
+
 def start_color():
     """curses.start_color clone using pygame, does nothing"""
     pass
+
 
 def use_default_colors():
     """curses.use_default_colors clone using pygame, does nothing"""
     pass
 
+
 def curs_set(x):
     """curses.curs_set clone using pygame, does nothing"""
     pass
+
 
 def mousemask(x):
     """curses.mousemask clone using pygame, does nothing"""
     pass
 
+
 def mouseinterval(x):
     """curses.mouseinterval clone using pygame, does nothing"""
     pass
+
 
 def nocbreak():
     """curses.nocbreak clone using pygame, does nothing"""
     pass
 
+
 def echo():
     """curses.echo clone using pygame, does nothing"""
     pass
+
 
 def endwin():
     """curses.endwin clone using pygame"""
     pass
 
+
 def def_prog_mode():
     """curses.def_prog_mode clone using pygame"""
     pass
+
 
 def reset_prog_mode():
     """curses.reset_prog_mode clone using pygame"""

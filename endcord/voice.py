@@ -12,7 +12,6 @@ import socket
 import struct
 import threading
 import time
-import urllib
 import urllib.parse
 from collections import deque
 
@@ -44,13 +43,13 @@ MAX_SILENCE = 10
 RTCP_SEND_DELAY = 5   # set to 0 to disable RTCP SR
 CODECS = [
     # pyav depends on ffmpeg, and its usually built without encode for av1 and vp9
-    {"name":"opus", "type":"audio", "priority":1000, "payload_type":120},
+    {"name": "opus", "type": "audio", "priority": 1000, "payload_type": 120},
     # video disabled for now
-    # {"name":"AV1", "type":"video", "priority":1000, "payload_type":101, "rtx_payload_type":102, "encode":False, "decode":True},
-    # {"name":"H264", "type":"video", "priority":2000, "payload_type":103, "rtx_payload_type":104, "encode":True, "decode":True},
+    # {"name": "AV1", "type": "video", "priority": 1000, "payload_type": 101, "rtx_payload_type": 102, "encode": False, "decode": True},
+    # {"name": "H264", "type": "video", "priority": 2000, "payload_type": 103, "rtx_payload_type": 104, "encode": True, "decode": True},
     # # h265 only in discord beta
-    # {"name":"VP8", "type":"video", "priority":3000, "payload_type":105, "rtx_payload_type":106, "encode":True, "decode":True},
-    # {"name":"VP9", "type":"video", "priority":4000, "payload_type":107, "rtx_payload_type":108, "encode":False, "decode":True},
+    # {"name": "VP8", "type": "video", "priority": 3000, "payload_type": 105, "rtx_payload_type": 106, "encode": True, "decode": True},
+    # {"name": "VP9", "type": "video", "priority": 4000, "payload_type": 107, "rtx_payload_type": 108, "encode": False, "decode": True},
 ]
 logger = logging.getLogger(__name__)
 rtp_unpacker = struct.Struct(">xxHII")
@@ -543,10 +542,10 @@ class Gateway():
                     "type": "video",
                     "rid": "100",
                     "quality": 100,
-                },{
+                }, {
                     "type": "video",
                     "rid": "50",
-                    "quality":50,
+                    "quality": 50,
                 }],
             },
         }

@@ -15,7 +15,6 @@ import sys
 import threading
 import time
 import traceback
-import urllib
 import urllib.parse
 import zlib
 
@@ -1067,7 +1066,7 @@ class Gateway():
                             nick=message["member"].get("nick"),
                             nonce=message["channel_id"],
                         )
-                    if not is_relevant_message(optext, message, self.active_channel, self.channel_cache, self.guilds, self.my_id, self.my_roles):# and not self.execute_extensions_method_first("on_message_event_is_irrelevant", message, optext, cache=True):
+                    if not is_relevant_message(optext, message, self.active_channel, self.channel_cache, self.guilds, self.my_id, self.my_roles) and not self.execute_extensions_method_first("on_message_event_is_irrelevant", message, optext, cache=True):
                         if message["author"]["id"] == self.my_id:   # dont process my messages from other clients
                             continue
                         self.messages_buffer.append({
@@ -1286,7 +1285,7 @@ class Gateway():
                         elif memlist["op"] == "DELETE":
                             try:
                                 del self.activities[guild_index][1][list_id][1][memlist["index"]]
-                            except (IndexError, NameError,KeyError):
+                            except (IndexError, NameError, KeyError):
                                 pass
                         elif memlist["op"] in ("UPDATE", "INSERT"):
                             try:
@@ -1365,7 +1364,7 @@ class Gateway():
                             activities.append({
                                 "type": activity["type"],
                                 "name": activity["name"],
-                                "state": activity.get( "state"),
+                                "state": activity.get("state"),
                                 "details": activity.get("details"),
                                 # "small_text": small_text,
                                 # "large_text": large_text,
@@ -1570,7 +1569,7 @@ class Gateway():
                             if user_id not in activities:
                                 continue
                             self.voice_states[channel_id][0] = self.voice_states[channel_id].get(0, 0) - 1
-                            del(self.voice_states[channel_id][user_id])
+                            del self.voice_states[channel_id][user_id]
                             self.should_redraw_tree = data["guild_id"]
 
                 elif optext.startswith("VOICE_"):
@@ -1627,7 +1626,7 @@ class Gateway():
                                 if user_id not in activities:
                                     continue
                                 self.voice_states[channel_id][0] = self.voice_states[channel_id].get(0, 0) - 1
-                                del(self.voice_states[channel_id][user_id])
+                                del self.voice_states[channel_id][user_id]
                                 self.should_redraw_tree = data["guild_id"] if data["guild_id"] else -1
 
                     elif optext == "VOICE_SERVER_UPDATE":

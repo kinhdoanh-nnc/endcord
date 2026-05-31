@@ -193,7 +193,7 @@ def generate_emoji():
     # build json file
     print("Building json file")
     path = os.path.expanduser("./endcord/emoji.json")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write("{\n")
         count = len(list_parsed)
         for emoji in list_parsed:

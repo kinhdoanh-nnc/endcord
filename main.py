@@ -15,7 +15,7 @@ import traceback
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"   # fix for https://github.com/Nuitka/Nuitka/issues/3442
 if os.environ.get("ENDCORD_APP_NAME"):
-    APP_NAME =  str(os.environ.get("ENDCORD_APP_NAME"))
+    APP_NAME = str(os.environ.get("ENDCORD_APP_NAME"))
 else:
     APP_NAME = "endcord"
 

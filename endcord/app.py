@@ -300,7 +300,7 @@ class Endcord:
         self.reset()
         self.chat.insert(0, f"Connecting to {self.config["custom_host"] or "Discord"}")
         self.gateway_state = self.gateway.get_state()
-        self.chat_dim, self.tree_dim, _  = self.tui.get_dimensions()
+        self.chat_dim, self.tree_dim, _ = self.tui.get_dimensions()
         self.state = defaults.state
         self.tree = []
         self.tree_format = []
@@ -2308,7 +2308,7 @@ class Endcord:
             elif action == 48:
                 if self.extra_line == self.permanent_extra_line and not self.extra_window_open:
                     if self.in_call:
-                        mouse_x = self.tui.get_x_line_clicked() + (not(self.tui.bordered))*2
+                        mouse_x = self.tui.get_x_line_clicked() + (not(self.tui.bordered)) * 2
                         len_extra_line = len(self.extra_line) + 1
                         if len_extra_line - 15 < mouse_x <= len_extra_line - 9:   # CLICK ON OUTPUT VOL
                             if self.state["volume_out"]:
@@ -5053,7 +5053,7 @@ class Endcord:
             else:
                 custom_status_emoji_name = None
             settings = {
-                "status":{
+                "status": {
                     "status": status,
                     "custom_status": {
                         "text": self.my_status["custom_status"],
@@ -6225,7 +6225,7 @@ class Endcord:
         elif "%tabs" in self.format_status_line_r:
             limit_string = min(self.tui.win_chat.getmaxyx()[1] - len(self.tui.status_txt_l) - 3 - 4 * self.tui.bordered, self.config["limit_tabs_string"])
         else:
-             limit_string = self.config["limit_tabs_string"]
+            limit_string = self.config["limit_tabs_string"]
         self.tab_string, self.tab_string_format, self.tab_string_map = formatter.generate_tab_string(
             self.tabs_names,
             active_tab_index,
@@ -6957,7 +6957,7 @@ class Endcord:
                 for num, message in enumerate(self.messages):
                     if "pending" in message and message["id"] == nonce:
                         self.messages.pop(num)
-                        change_amount -=1
+                        change_amount -= 1
                         self.update_chat_noui(change_id=num-1, change_type=20)   # -1 because new message is inserted
                         break
             # limit chat size
@@ -8490,7 +8490,7 @@ class Endcord:
                     paths = utils.complete_path(assist_word, separator=True)
                     self.assist(assist_word, assist_type, query_results=paths)
             elif self.assist_type == 8 and not assist_word and self.assist_word:
-                 self.assist("", 8)
+                self.assist("", 8)
 
 
             # check member assist query results

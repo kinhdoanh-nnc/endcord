@@ -28,16 +28,16 @@ else:
 
 
 KEY_CODES = {   # from curses for consistency
-    b"\x1b[A": 259,  # UP
-    b"\x1b[B": 258,  # DOWN
-    b"\x1b[D": 260,  # LEFT
-    b"\x1b[C": 261,  # RIGHT
-    b"\x1b[H": 262,  # HOME
-    b"\x1b[F": 360,  # END
-    b"\x1b[5~": 339, # PG_UP
-    b"\x1b[6~": 338, # PG_DOWN
-    b"\x1b[3~": 330, # DELETE
-    b"\x1b[2~": 331, # INSERT
+    b"\x1b[A": 259,   # UP
+    b"\x1b[B": 258,   # DOWN
+    b"\x1b[D": 260,   # LEFT
+    b"\x1b[C": 261,   # RIGHT
+    b"\x1b[H": 262,   # HOME
+    b"\x1b[F": 360,   # END
+    b"\x1b[5~": 339,  # PG_UP
+    b"\x1b[6~": 338,  # PG_DOWN
+    b"\x1b[3~": 330,  # DELETE
+    b"\x1b[2~": 331,  # INSERT
 }
 
 KEY_CODES_WIN = {

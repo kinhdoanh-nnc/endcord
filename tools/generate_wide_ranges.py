@@ -179,7 +179,7 @@ def generate_wide_ranged():
 
     # build py file
     path = os.path.expanduser("./endcord/wide_ranges.py")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(HEADER)
         f.write("\n")
         f.write("WIDE_RANGES = (\n")

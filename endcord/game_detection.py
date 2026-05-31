@@ -49,13 +49,13 @@ def get_user_processes_diff_linux():
 
         # check cache
         if pid in proc_cache:
-           proc_cache[pid][1] = True
-           continue
+            proc_cache[pid][1] = True
+            continue
         proc_cache[pid] = [None, True]
 
         # read and check uid
         try:
-            with open(f"/proc/{pid}/status", "r") as f:
+            with open(f"/proc/{pid}/status", "r") as f:   # noqa
                 uid = None
                 for line in f:
                     if line.startswith("Uid:"):
@@ -121,8 +121,8 @@ def get_user_processes_diff_windows():
 
         # check cache
         if pid in proc_cache:
-           proc_cache[pid][1] = True
-           continue
+            proc_cache[pid][1] = True
+            continue
         proc_cache[pid] = [None, True]
 
         # skip system processes
@@ -183,8 +183,8 @@ def get_user_processes_diff_darwin():
 
         # check cache
         if pid in proc_cache:
-           proc_cache[pid][1] = True
-           continue
+            proc_cache[pid][1] = True
+            continue
         proc_cache[pid] = [None, True]
 
         # check uid

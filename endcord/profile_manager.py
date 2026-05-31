@@ -275,7 +275,7 @@ def load_plain(profiles_path):
     if not os.path.exists(path):
         return []
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         logger.warning("Invalid profiles.json file")
@@ -292,7 +292,7 @@ def save_plain(profiles, profiles_path):
         with os.fdopen(fd, "w") as f:
             json.dump(profiles, f, indent=2)
     else:
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(profiles, f, indent=2)
 
 
@@ -425,7 +425,7 @@ def main_tui(screen, profiles_enc, profiles_plain, selected, have_keyring, confi
             elif selected_button == 2 and profiles:   # EDIT
                 enc_source = profiles[selected_num]["source"] == "keyring"
                 for num, profile in enumerate(profiles_enc if enc_source else profiles_plain):
-                    if profile["name"] ==  profiles[selected_num]["name"]:
+                    if profile["name"] == profiles[selected_num]["name"]:
                         break
                 profile, edit = manage_profile(screen, have_keyring, config, editing_profile=profiles[selected_num])
                 screen.clear()
@@ -440,7 +440,7 @@ def main_tui(screen, profiles_enc, profiles_plain, selected, have_keyring, confi
                 profiles_enc, profiles_plain, deleted = delete_profile(screen, profiles_enc, profiles_plain, profiles[selected_num])
                 screen.clear()
                 if deleted and selected_num > 0:
-                    selected_num -=1
+                    selected_num -= 1
                 regenerate = True
             elif selected_button == 4:   # QUIT
                 break
@@ -685,7 +685,7 @@ def manage_profile(screen, have_keyring, config, editing_profile=None):
             from endcord import auth, client_properties, terminal_qr, terminal_utils
             discord_auth = init_auth(config)
             if config["custom_user_agent"]:
-                user_agent =  config["custom_user_agent"]
+                user_agent = config["custom_user_agent"]
             else:
                 user_agent = client_properties.get_user_agent(anonymous=(config["client_properties"].lower() == "anonymous"))
             gateway_auth = auth.Gateway(user_agent, proxy=config["proxy"])

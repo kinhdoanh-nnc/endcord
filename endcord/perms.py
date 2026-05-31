@@ -8,6 +8,7 @@ def decode_flag(flags, flag_num):
     flag = (1 << flag_num)
     return (flags & flag) == flag
 
+
 def decode_permission(permission, flag):
     """
     Return value for specified permission flag (binary shifted)

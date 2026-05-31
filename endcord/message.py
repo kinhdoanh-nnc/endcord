@@ -112,9 +112,11 @@ def content_to_attachment(message, embeds):
     content = message["content"]
     if any(x in content for x in DISCORDAPP_CDN_ATTACHMENTS):
         matches = []
+
         def collect(m):
             matches.append((m.group(0), m.group(1)))
             return ""
+
         message["content"] = match_discord_attachment_url.sub(collect, content)
         for attachment in matches:
             for embed in embeds:
@@ -713,7 +715,7 @@ def is_relevant_message(op, message, current_channel_id, channel_cache, guilds, 
     message_notifications = 2   # 0 - all messages, 1 - only mentions, 2 - nothing
     for guild in guilds:
         if guild["guild_id"] == guild_id:
-            if  guild.get("muted"):
+            if guild.get("muted"):
                 return False
             for channel in guild["channels"]:
                 if channel_id == channel["id"]:

@@ -56,6 +56,7 @@ match_md_all = re.compile(
 )
 MARKER = "\uEE42"  # character from private use area
 
+
 def ceil(x):
     """To avoid importing math.ceil"""
     int_part = int(x)
@@ -1142,8 +1143,8 @@ class ChatGenerator:
             .split("\n")[0],
         )
         self.pre_name_len_interaction = len(self.format_interaction
-            .replace("%username","\n")
-            .replace("%global_name","\n")
+            .replace("%username", "\n")
+            .replace("%global_name", "\n")
             .split("\n")[0],
         )
         if self.dynamic_name_len:
@@ -2267,7 +2268,7 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
         action_string = ""
 
     # running long tasks
-    tasks = sorted(tasks, key=lambda x:x[1])
+    tasks = sorted(tasks, key=lambda x: x[1])
     if len(tasks) == 0:
         task = ""
     elif len(tasks) == 1:
@@ -2863,7 +2864,7 @@ def generate_extra_window_search_ext(extensions, max_len):
         official = " (official)" if extension[3] else ""
         description = str(extension[2]).replace("An extension for endcord discord TUI client, that ", "")
         description = description.capitalize()
-        body.append(normalize_string(extension[1] + official +  " - " + description, max_len, emoji_safe=True, dots=True, fill=False))
+        body.append(normalize_string(extension[1] + official + " - " + description, max_len, emoji_safe=True, dots=True, fill=False))
 
     return title_line, body
 
@@ -3006,7 +3007,7 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
                 this_format.append([19, 0, 2])
             elif member["status"] == "offline":
                 text = f"  {global_name}"
-                #this_format.append([])
+                # this_format.append([])
             else:   # online
                 this_format.append([18, 0, 2])
 

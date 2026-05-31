@@ -224,6 +224,7 @@ if have_soundcard:
 else:
     have_sound = False
 
+
 class TerminalMedia():
     """Methods for showing and playing media in terminal"""
 

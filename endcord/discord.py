@@ -1068,7 +1068,7 @@ class Discord():
         url = "/api/v9/users/@me/guilds/settings"
         message_data = json.dumps(message_dict)
         data, status = self.request("PATCH", url, message_data, self.header)
-        if not  status:
+        if not status:
             return None
         if status == 200:
             return True
@@ -1417,7 +1417,7 @@ class Discord():
         message_data = None
         url = f"/api/v9/channels/{channel_id}/pins"
         data, status = self.request("GET", url, message_data, self.header)
-        if not  status:
+        if not status:
             return None
         if status == 200:
             data = json.loads(data)

@@ -20,6 +20,7 @@ HEADER = {
     "Accept": "application/vnd.github+json",
 }
 
+
 def install_extension(url, cli=False, prefer_tag=None, update=False, proxy=None):
     """Install extension from specified git repo url"""
     # init stuff
@@ -125,7 +126,7 @@ def check_for_update(current_version, owner, repo, proxy=None):
 
 def search_gh_repos(topic, num=30, page=1, official_maintainer=peripherals.REPO_OWNER, proxy=None):
     """Search github repositories"""
-    query =  urllib.parse.urlencode({
+    query = urllib.parse.urlencode({
         "q": f"topic:{topic}",
         "per_page": num,
         "page": page,
@@ -145,7 +146,7 @@ def search_gh_repos(topic, num=30, page=1, official_maintainer=peripherals.REPO_
             repo_name = item["name"]
             description = item["description"] or "No description"
             owner = item["owner"]["login"]
-            repos.append((owner, repo_name, description, owner==official_maintainer))
+            repos.append((owner, repo_name, description, owner == official_maintainer))
         return repos
     connection.close()
     logger.error(f"Failed searching for repos: {topic}, page: {page}, http error code: {response.status}")
@@ -196,7 +197,7 @@ def download_gh_repo(owner, repo, save_path, tag=None, proxy=None):
                 return []
             redirects += 1
             connection.close()
-            parsed =  urllib.parse.urlparse(location)
+            parsed = urllib.parse.urlparse(location)
             if parsed.netloc:
                 host = parsed.netloc
             if parsed.path:

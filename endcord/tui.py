@@ -1446,7 +1446,7 @@ class TUI():
             self.screen.vline(y, abs_x, curses.ACS_VLINE, h, curses.color_pair(self.default_color))
             if thumb_size > 0:
                 for rel_y in range(thumb_size):
-                     self.screen.addch(y + rel_y + thumb_pos, abs_x, self.scrollbar_char, curses.color_pair(self.default_color))
+                    self.screen.addch(y + rel_y + thumb_pos, abs_x, self.scrollbar_char, curses.color_pair(self.default_color))
             # draw corners
             self.screen.addstr(y - 1, abs_x, self.corner_ur, curses.color_pair(self.default_color))
             # it errors when drawing in bottom-right cell, but still draws it
@@ -1588,7 +1588,7 @@ class TUI():
                 while y < h:
                     # curses optimizes scrolling, so large empty sace will cause flickering when scrolling member list
                     # this is prevented by verically alternating space and alt_space character (U+2800 - braille pattern blank)
-                    self.win_tree.insstr(y, 0, f"{" " if y%2 else ALT_SPACE}\n", curses.color_pair(1))
+                    self.win_tree.insstr(y, 0, f"{" " if y % 2 else ALT_SPACE}\n", curses.color_pair(1))
                     y += 1
                 while num < len(self.tree_format):   # continue loop to detect mentions bellow visible area
                     if (self.tree_format[num] % 100) // 10 == 2:
@@ -1879,7 +1879,7 @@ class TUI():
                 w -= 1
                 y = 0
                 for num, line in enumerate(member_list):
-                    y =  max(num - self.mlist_index, 0)
+                    y = max(num - self.mlist_index, 0)
                     if y >= h:
                         break
                     line_format = member_list_format[num]
@@ -1904,7 +1904,7 @@ class TUI():
                 while y < h:
                     # curses optimizes scrolling, so large empty sace will cause flickering when scrolling tree
                     # this is prevented by verically alternating space and alt_space character (U+2800 - braille pattern blank)
-                    self.win_member_list.insstr(y, 0, f"{" " if y%2 else ALT_SPACE}\n", curses.color_pair(1))
+                    self.win_member_list.insstr(y, 0, f"{" " if y % 2 else ALT_SPACE}\n", curses.color_pair(1))
                     y += 1
                 self.win_member_list.noutrefresh()
                 self.need_update.set()
@@ -2598,8 +2598,8 @@ class TUI():
 
             elif not self.insert_mode and not self.switch_tab_modifier and isinstance(key, int) and 49 <= key <= 57:
                 # switch tab key in normal mode in vim mode
-                 self.pressed_num_key = key - 48
-                 return self.return_input_code(42)
+                self.pressed_num_key = key - 48
+                return self.return_input_code(42)
 
             elif (code := self.common_keybindings(key, command=command, forum=forum)):
                 return self.return_input_code(code)

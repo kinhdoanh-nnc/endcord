@@ -23,6 +23,7 @@ if sys.platform.startswith("android"):
 if "bsd" in sys.platform:
     sys.platform = "linux"
 
+
 def get_app_name():
     """Get app name from pyproject.toml"""
     if os.path.exists("pyproject.toml"):

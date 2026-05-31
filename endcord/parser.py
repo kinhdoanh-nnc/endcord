@@ -102,9 +102,9 @@ def rel_months_to_seconds(n, from_dt, direction):
     total_seconds = 0.0
     for i in range(num_months):
         month_offset = from_dt.month + i * direction
-        year  = from_dt.year + (month_offset - 1) // 12
+        year = from_dt.year + (month_offset - 1) // 12
         month = (month_offset - 1) % 12 + 1
-        days  = (datetime(year + (month == 12), month % 12 + 1, 1) - datetime(year, month, 1)).days
+        days = (datetime(year + (month == 12), month % 12 + 1, 1) - datetime(year, month, 1)).days
         total_seconds += days * (remainder if (i == whole) else 1.0) * 86400
     return total_seconds
 
