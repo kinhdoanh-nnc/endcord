@@ -97,44 +97,53 @@ class InlineMedia:
 
     def update(self, chat_map, messages):
         """Get new data, queue downloads, update caches and trigger forced redraw if needed"""
-        with self.image_cache_lock:
-            image_cache = {}
+        images = []
 
-            # check chat_map for images
-            for rel_y, line_map in enumerate(chat_map):
-                if not line_map:
-                    continue
-                if not line_map[5]:
-                    continue
-                img_pos = line_map[5][5]
-                if not img_pos or len(img_pos) < 4:
-                    continue
-                rel_x, w, embed_idx, h, = img_pos
-                try:
-                    message = messages[line_map[0]]
-                    message_id = message["id"]
-                    image_id = f"{message_id}_{embed_idx}"
-                    embed_name = message["embeds"][embed_idx]["name"]
-                    draw = not (embed_name and embed_name.startswith("SPOILER_"))
-                    if not draw:
-                        draw = 1000 + embed_idx in message.get("spoiled", [])
-                except IndexError:
-                    continue
-                if image_id not in self.image_cache or h != self.image_cache[image_id][2] or w != self.image_cache[image_id][3]:
-                    self.download_queue.put((message, embed_idx, image_id, rel_y, rel_x, h, w, draw))
-                image_cache[image_id] = [rel_y, rel_x, h, w, draw]
+        # check chat_map for images
+        for rel_y, line_map in enumerate(chat_map):
+            if not line_map:
+                continue
+            if not line_map[5]:
+                continue
+            img_pos = line_map[5][5]
+            if not img_pos or len(img_pos) < 4:
+                continue
 
-            # update cahanged images and delete unused cache
-            for image_id, image in image_cache.items():
+            # collect data
+            rel_x, w, embed_idx, h, = img_pos
+            try:
+                message = messages[line_map[0]]
+                message_id = message["id"]
+                image_id = f"{message_id}_{embed_idx}"
+                embed_name = message["embeds"][embed_idx]["name"]
+                draw = not (embed_name and embed_name.startswith("SPOILER_"))
+                if not draw:
+                    draw = 1000 + embed_idx in message.get("spoiled", [])
+            except IndexError:
+                continue
+
+            # update cache
+            with self.image_cache_lock:
                 if image_id not in self.image_cache:
                     self.force_draw = True
-                    self.image_cache[image_id] = [None] + image
-                elif self.image_cache[image_id][1:] != image:
+                    self.image_cache[image_id] = [None, rel_y, rel_x, h, w, draw]
+                elif self.image_cache[image_id][1:] != [rel_y, rel_x, h, w, draw]:
+                    if self.image_cache[image_id][3] != h or self.image_cache[image_id][4] != w:
+                        # make this one redownload because changed dimensions
+                        self.image_cache[image_id][0] = None
                     self.force_draw = True
-                    self.image_cache[image_id][1:] = image
+                    self.image_cache[image_id][1:] = [rel_y, rel_x, h, w, draw]
+
+            # download image if needed
+            if image_id not in self.image_cache or self.image_cache[image_id][0] is not None or h != self.image_cache[image_id][2] or w != self.image_cache[image_id][3]:
+                self.download_queue.put((message, embed_idx, image_id, rel_y, rel_x, h, w, draw))
+            images.append(image_id)
+
+        # clear cache
+        with self.image_cache_lock:
             to_delete = []
             for image_id, image in self.image_cache.items():
-                if image_id not in image_cache:
+                if image_id not in images:
                     to_delete.append(image_id)
                     self.force_draw = True
             for image_id in to_delete:

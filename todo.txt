@@ -1,4 +1,5 @@
 Fix selected line removing inline image
+Have one keepalive connection for downloading thumb media (under thread lock)
 Add colors and formatting in assist window
 Update screenshots
 
