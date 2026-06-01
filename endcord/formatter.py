@@ -1669,10 +1669,10 @@ class ChatGenerator:
                             embed_url = trim_string(embed_url, self.trim_embed_url_size)
                     content += f"[{clean_type(embed["type"])} embed]: {embed_url}"
                 if self.placeholder_images and embed.get("proxy_url") and embed["hw"]:
+                    if not embed["hw"][0] or not embed["hw"][1]:
+                        continue
                     h = embed["hw"][0] / self.font_ratio
                     w = embed["hw"][1]
-                    if h == 0 or w == 0:
-                        continue
                     smallest_h = h / self.dpw
                     smallest_w = w / self.dpw
                     scale = min(min(self.placeholder_images, smallest_h) / h, min(max_length - 1 - self.newline_len, smallest_w) / w, 1)

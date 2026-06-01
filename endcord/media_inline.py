@@ -320,7 +320,11 @@ class InlineMedia:
             image_path = self.discord.get_file(img_url, self.image_cache_path, file_name=img_name, cache=True, keepalive=True)
             if not image_path:
                 continue
-            data = self.load_image(image_path, h, w)
+            try:
+                data = self.load_image(image_path, h, w)
+            except Exception as e:
+                logger.info(f"Error processing image: {e}")
+                continue
             if not data:
                 continue
             with self.image_cache_lock:

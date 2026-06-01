@@ -831,14 +831,18 @@ def text_prompt(screen, description_text, prompts, init=None, mask=None, prompt_
             prompt_len = len(prompt) + 2
             text = texts[i]
             if mask[i]:
-                dots = "•" * len(text[:w - prompt_len])
+                dots = "•" * len(text[:w-prompt_len])
                 line = prompt + dots
+                screen_input_index = input_index
             else:
-                line = prompt + text[:w - prompt_len]
+                shift = max(len(text) - (w - prompt_len), 0)
+                line = prompt + text[-(w-prompt_len):]
+                screen_input_index = input_index - shift
             line += " " * (w - len(line) - 1)
             if i == selected:
                 screen.addstr(y, 1, line, curses.color_pair(1) | curses.A_STANDOUT)
-                screen.addch(y, input_index + prompt_len - 1, line[input_index + prompt_len - 2], curses.color_pair(2))
+                if screen_input_index + prompt_len - 1 < w:
+                    screen.addch(y, screen_input_index + prompt_len - 1, line[screen_input_index + prompt_len - 2], curses.color_pair(2))
             else:
                 screen.addstr(y, 1, line, curses.color_pair(2))    # gray
         screen.refresh()
@@ -876,7 +880,7 @@ def text_prompt(screen, description_text, prompts, init=None, mask=None, prompt_
                 proceed = True
                 break
 
-        elif key == BACKSPACE or key == 127:
+        elif key in (BACKSPACE, 127) and input_index > 0:
             texts[selected] = texts[selected][:input_index-1] + texts[selected][input_index:]
             input_index -= 1
 
@@ -889,6 +893,7 @@ def text_prompt(screen, description_text, prompts, init=None, mask=None, prompt_
             input_index = len(texts[selected])
 
         elif key == curses.KEY_LEFT and input_index > 0:
+            logger.info(input_index)
             input_index -= 1
 
         elif key == curses.KEY_RIGHT and input_index < len(texts[selected]):
