@@ -22,6 +22,6 @@ Localization
 Extensions:
 endcord-termux-rich
 endcord-undelete
-endcord-image-pfp
 endcord-message-replace
+endcord-image-pfp
 endcord-kitty-media
