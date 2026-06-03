@@ -124,6 +124,8 @@ def extract_colors(config):
         check_color(config["color_chat_separator"]),
         check_color(config["color_chat_code"]),
         check_color(config["color_chat_standout"]),
+        check_color(config["color_extra_window_low"]),   # color_extra_window is loaded in tui
+        check_color(config["color_extra_window_standout"]),
     )
 
 

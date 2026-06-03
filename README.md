@@ -16,7 +16,9 @@
 Endcord is a third-party feature rich Discord client, running entirely in terminal.  
 It is built with Python (this [doesnt mean its slow](#note-on-python-performance-misconceptions)) and ncurses library, to deliver lightweight yet feature rich experience.  
 [More screenshots](https://github.com/sparklost/endcord/blob/main/.github/screenshots.md).  
-Third party endcord forks may add features that can lead to account ban, contain malicious code, cause instability, especially if they include LLM generated/modified code, so it is strongly recommended to avoid them. Official endcord will always stay purely human project.  
+Official endcord will always stay **purely human project**.
+Third party endcord forks may add features that can lead to account ban, contain malicious code, cause instability, especially if they include LLM generated/modified code, so it is strongly recommended to avoid them. If you want to create fork that modifies original code, please DONT.  
+
 
 ## Features
 - Extremely low CPU and RAM usage (see [RAM usage](#ram-usage))
@@ -345,7 +347,7 @@ Optional dependencies:
 - `git` - Install and update extensions from other sources than github
 - `yt-dlp` - youtube support
 - `mpv` - Play youtube videos in native player (non-ascii)
-- `libsecret` - Store token in system keyring (`gnome-keyring` is also required, with `dbus` as dependency)
+- `libsecret` - Store token in system keyring (secret service provider is also required (eg. `gnome-keyring`, `KWallet`, `KeePassXC`), with `dbus` as dependency)
 - `libappindicator-gtk3` - Tray support under wayland, for [experimental windowed mode](#experimental-windowed-mode) only.
 - `imagemagick` - To make notification images round; only needed for endcord-lite.
 

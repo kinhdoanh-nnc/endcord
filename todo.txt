@@ -1,4 +1,4 @@
-Add colors and formatting in assist window
+Add colors and formatting in assists
 Update screenshots
 
 Fix sent audio is delayed and low quality

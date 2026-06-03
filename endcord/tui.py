@@ -20,6 +20,8 @@ INPUT_LINE_JUMP = 20   # jump size when moving input line
 MAX_DELTA_STORE = 50   # limit undo size
 MIN_ASSIST_LETTERS = 2
 ASSIST_TRIGGERS = ("#", "@", ":", ";")
+ALLOWED_BEFORE_ASSIST = (" ", "\n", "+")
+ALLOWED_BEFORE_ASSIST_EXTRA = (" ", "\n", "+", ":", "=")
 APP_COMMAND_ASSIST_TRIEGGER = "/"
 if sys.platform == "win32" or os.environ.get("REALTERM", "") == "xterm":   # envvar set in main.py
     BACKSPACE = 8   # i cant believe this
@@ -142,6 +144,73 @@ def get_key(screen):
         return first
 
 
+def draw_formatted_line(window, y, x, text, text_format, default_color, attrib_map, lock):
+    """
+    Draw single attributed line on a window, line is expected to have spaces to be filled to screen edge.
+    text_format = [[color_id, attribute, start, end], ...]
+    """
+    with lock:
+        if not text_format:
+            window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
+            return
+        pos = 0
+        try:
+            for pos, character in enumerate(text):
+                for format_part in text_format:
+                    if format_part[2] <= pos < format_part[3]:
+                        if format_part[1] == 1:
+                            attrib = curses.A_BOLD
+                        elif format_part[1] == 2:
+                            attrib = curses.A_ITALIC
+                        elif format_part[1] == 3:
+                            attrib = curses.A_UNDERLINE
+                        else:
+                            attrib = attrib_map[default_color]
+                        color = format_part[0]
+                        if color is None:
+                            color = default_color
+                        safe_insch(window, y, x + pos, character, curses.color_pair(color) | attrib)
+                        break
+                else:
+                    safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib_map[default_color])
+        except curses.error:
+            # exception will happen when window is resized to smaller w dimensions
+            pass   # some other draw function will call self.resize()
+
+
+def draw_attributed_line(window, y, x, text, text_format, default_color, skip_attrib, attrib_map, lock):
+    """
+    Draw single attributed line on a window, line is expected to have spaces to be filled to screen edge.
+    text_format = [[attribute, start, end], ...]
+    """
+    with lock:
+        if not text_format:
+            window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
+            return
+        pos = 0
+        try:
+            for pos, character in enumerate(text):
+                for format_part in text_format:
+                    if format_part[1] <= pos < format_part[2]:
+                        if format_part[0] == 1:
+                            attrib = curses.A_BOLD
+                        elif format_part[0] == 2:
+                            attrib = curses.A_ITALIC
+                        elif format_part[0] == 3:
+                            attrib = curses.A_UNDERLINE
+                        elif skip_attrib:
+                            attrib = 0
+                        else:
+                            attrib = attrib_map[default_color]
+                        safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib)
+                        break
+                else:
+                    safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib_map[default_color])
+        except curses.error:
+            # exception will happen when window is resized to smaller w dimensions
+            pass   # some other draw function will call self.resize()
+
+
 def draw_chat(win_chat, h, w, chat_buffer, chat_format, chat_index, chat_selected, attrib_map, color_default, exclude_selection):
     """Draw chat with applied color formatting"""
     y = h
@@ -216,7 +285,7 @@ class TUI():
         self.color_pairs = {}
         self.attrib_map = [0]   # has 0 so its index starts from 1 to be matched with color pairs
         tree_bg = config["color_tree_default"][1]
-        self.protected_colors = 21   # first N colors that must not be reused
+        self.protected_colors = 22   # first N colors that must not be reused
         self.init_pair((255, -1))   # white on default
         self.init_pair((233, 255))   # black on white
         self.init_pair(config["color_tree_default"])   # 3
@@ -341,7 +410,8 @@ class TUI():
         self.typing = time.time()
         self.extra_line_text = ""
         self.extra_window_title = ""
-        self.extra_window_body = ""
+        self.extra_window_body = []
+        self.extra_window_format = []
         self.member_list = []
         self.member_list_format = []
         self.red_list = []
@@ -628,7 +698,7 @@ class TUI():
         # redraw
         self.draw_border(win_prompt_input_line, top=False)
         self.draw_status_line()
-        self.draw_border(chat_hwyx, top=not(self.have_title), right=not(self.draw_scrollbar))
+        self.draw_border(chat_hwyx, top=not(self.have_title), right=not(self.have_scrollbar))
         self.update_prompt(self.prompt)
         self.spellcheck()
         self.draw_input_line()
@@ -683,7 +753,7 @@ class TUI():
         self.win_chat = self.screen.derwin(*chat_hwyx)
         self.chat_hw = self.win_chat.getmaxyx()
         if self.bordered:
-            self.draw_border(chat_hwyx, top=not(self.have_title), right=not(self.draw_scrollbar))
+            self.draw_border(chat_hwyx, top=not(self.have_title), right=not(self.have_scrollbar))
             self.screen.noutrefresh()
         return common_h
 
@@ -787,7 +857,7 @@ class TUI():
         self.chat_scrolled_top = False
 
 
-    def get_assist(self):
+    def get_assist(self, extended=False):
         """
         Return word to be assisted with completing and type of assist needed
         Assist types:
@@ -808,7 +878,8 @@ class TUI():
                     self.input_buffer[self.assist_start-1] in ASSIST_TRIGGERS
                 ):
                     assist_type = ASSIST_TRIGGERS.index(self.input_buffer[self.assist_start-1]) + 1
-                    if self.assist_start != 1 and (self.input_buffer[self.assist_start-2] not in (" ", "\n", "+") or self.input_buffer[self.assist_start] in (" ", "\n")):
+                    before_assist = ALLOWED_BEFORE_ASSIST_EXTRA if extended else ALLOWED_BEFORE_ASSIST
+                    if self.assist_start != 1 and (self.input_buffer[self.assist_start-2] not in before_assist or self.input_buffer[self.assist_start] in (" ", "\n")):
                         # skip trigger if no space before it
                         if self.instant_assist:
                             return self.input_buffer, 5
@@ -1176,7 +1247,6 @@ class TUI():
             pass
 
 
-
     def draw_status_line(self):
         """Draw status line"""
         with self.lock:
@@ -1224,7 +1294,7 @@ class TUI():
                 status_format = self.status_txt_l_format
 
             if status_format:
-                self.draw_formatted_line(self.win_status_line, status_line, status_format, self.default_color if self.bordered else 17)
+                draw_attributed_line(self.win_status_line, 0, 0, status_line, status_format, self.default_color if self.bordered else 17, self.bordered, self.attrib_map, self.lock)
             elif self.bordered:
                 self.win_status_line.insstr(0, 0, status_line + "\n", curses.color_pair(self.default_color))
             else:
@@ -1285,41 +1355,13 @@ class TUI():
                 title_format = self.title_txt_l_format
 
             if title_format:
-                self.draw_formatted_line(self.win_title_line, title_line, title_format, self.default_color if self.bordered else 12)
+                draw_attributed_line(self.win_title_line, 0, 0, title_line, title_format, self.default_color if self.bordered else 12, self.bordered, self.attrib_map, self.lock)
             elif self.bordered:
                 self.win_title_line.insstr(0, 0, title_line + "\n", curses.color_pair(self.default_color))
             else:
                 self.win_title_line.insstr(0, 0, title_line + "\n", curses.color_pair(12) | self.attrib_map[12])
             self.win_title_line.noutrefresh()
             self.need_update.set()
-
-
-    def draw_formatted_line(self, window, text, text_format, default_color):
-        """Draw single formatted line on a (line) window, line is expected to have spaces to be filled to screen edge"""
-        with self.lock:
-            pos = 0
-            try:
-                for pos, character in enumerate(text):
-                    for format_part in text_format:
-                        if format_part[1] <= pos < format_part[2]:
-                            if format_part[0] == 1:
-                                attrib = curses.A_BOLD
-                            elif format_part[0] == 2:
-                                attrib = curses.A_ITALIC
-                            elif format_part[0] == 3:
-                                attrib = curses.A_UNDERLINE
-                            elif default_color == self.default_color:
-                                attrib = 0
-                            else:
-                                attrib = self.attrib_map[default_color]
-                            safe_insch(window, 0, pos, character, curses.color_pair(default_color) | attrib)
-                            break
-                    else:
-                        safe_insch(window, 0, pos, character, curses.color_pair(default_color) | self.attrib_map[14])
-            except curses.error:
-                # exception will happen when window is resized to smaller w dimensions
-                if not self.disable_drawing:
-                    pass   # some other draw function will call self.resize()
 
 
     def draw_title_tree(self):
@@ -1427,33 +1469,36 @@ class TUI():
         """Draw scrollbar at the right side of the chat"""
         if not self.have_scrollbar:
             return
-        h, w = self.chat_hw
-        y, x = self.win_chat.getbegyx()
-        abs_x = x + w
-        total_lines = len(self.chat_buffer)
+        with self.lock:
+            h, w = self.chat_hw
+            y, x = self.win_chat.getbegyx()
+            abs_x = x + w
+            total_lines = len(self.chat_buffer)
 
-        # clculate thumb size and pos
-        if total_lines <= h:
-            thumb_size = 0
-            thumb_pos = 0
-        else:
-            thumb_size = max(2, h * h // total_lines)
-            max_pos = h - thumb_size
-            max_index = total_lines - h
-            thumb_pos = max(0, min(max_pos, max_pos - int(self.chat_index * max_pos / max_index)))
+            # clculate thumb size and pos
+            if total_lines <= h:
+                thumb_size = 0
+                thumb_pos = 0
+            else:
+                thumb_size = max(2, h * h // total_lines)
+                max_pos = h - thumb_size
+                max_index = total_lines - h
+                thumb_pos = max(0, min(max_pos, max_pos - int(self.chat_index * max_pos / max_index)))
 
-        try:
-            # draw thumb and border
-            self.screen.vline(y, abs_x, curses.ACS_VLINE, h, curses.color_pair(self.default_color))
-            if thumb_size > 0:
-                for rel_y in range(thumb_size):
-                    self.screen.addch(y + rel_y + thumb_pos, abs_x, self.scrollbar_char, curses.color_pair(self.default_color))
-            # draw corners
-            self.screen.addstr(y - 1, abs_x, self.corner_ur, curses.color_pair(self.default_color))
-            # it errors when drawing in bottom-right cell, but still draws it
-            self.screen.addstr(y + h, abs_x, self.corner_dr, curses.color_pair(self.default_color))
-        except curses.error:
-            pass
+            try:
+                # draw thumb and border
+                self.screen.vline(y, abs_x, curses.ACS_VLINE, h, curses.color_pair(self.default_color))
+                if thumb_size > 0:
+                    for rel_y in range(thumb_size):
+                        self.screen.addch(y + rel_y + thumb_pos, abs_x, self.scrollbar_char, curses.color_pair(self.default_color))
+                # draw corners
+                self.screen.addstr(y - 1, abs_x, self.corner_ur, curses.color_pair(self.default_color))
+                # it errors when drawing in bottom-right cell, but still draws it
+                self.screen.addstr(y + h, abs_x, self.corner_dr, curses.color_pair(self.default_color))
+            except curses.error:
+                pass
+            self.screen.noutrefresh()
+            self.need_update.set()
 
 
     def set_wide(self, chat_map):
@@ -1721,11 +1766,13 @@ class TUI():
                     self.draw_status_line()
                 self.draw_member_list(self.member_list, self.member_list_format, force=True)
                 self.draw_chat(inline=False)
+            if self.have_scrollbar:
+                self.draw_scrollbar()
             if self.inline_media:   # gotta be outside lock
                 self.inline_media.draw_images()
 
 
-    def draw_extra_window(self, title_txt, body_text, select=False, reset_scroll=True):
+    def draw_extra_window(self, title_txt, body_text, body_format=None, select=False, reset_scroll=True):
         """
         Draw extra window above status line and resize chat.
         title_txt is string, body_text is list.
@@ -1736,6 +1783,8 @@ class TUI():
             self.extra_select = select
             self.extra_window_title = title_txt
             self.extra_window_body = body_text
+            if body_format is not None:   # only if body format is [] then there is no format
+                self.extra_window_format = body_format
             if reset_scroll:
                 self.extra_index = 0
                 self.extra_selected = 0 if self.extra_select else -1
@@ -1777,11 +1826,12 @@ class TUI():
                         break
                     if y < 0:
                         continue
+                    line_format = self.extra_window_format[num] if self.extra_window_format else []
                     try:
                         if num == self.extra_selected:
                             self.win_extra_window.insstr(y + 1, 0, line + " " * (w - len(line)) + "\n", curses.color_pair(11) | self.attrib_map[11])
                         else:
-                            self.win_extra_window.insstr(y + 1, 0, line + " " * (w - len(line)) + "\n", curses.color_pair(21) | self.attrib_map[21])
+                            draw_formatted_line(self.win_extra_window, y + 1, 0, line + " " * (w - len(line)) + "\n", line_format, 21, self.attrib_map, self.lock)
                     except curses.error:   # some error with emojis
                         pass
 
@@ -1805,7 +1855,8 @@ class TUI():
             with self.lock:
                 del (self.win_extra_window, self.win_chat)
                 self.extra_window_title = ""
-                self.extra_window_body = ""
+                self.extra_window_body = []
+                self.extra_window_format = []
                 self.win_extra_window = None
                 self.extra_selected = -1
                 self.init_chat()
@@ -1824,9 +1875,11 @@ class TUI():
                 self.draw_extra_line(self.extra_line_text)
                 self.draw_member_list(self.member_list, self.member_list_format, force=True)
                 self.draw_chat(inline=False)
+            if self.have_scrollbar:
+                self.draw_scrollbar()
             if self.inline_media:   # gotta be outside lock
                 self.inline_media.draw_images()
-        self.execute_extensions_methods("on_extra_window_remove")
+            self.execute_extensions_methods("on_extra_window_remove")
 
 
     def draw_member_list(self, member_list, member_list_format, force=False, reset=False, clean=True):

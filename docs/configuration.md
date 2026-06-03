@@ -392,6 +392,10 @@ Every next list has additional `start` and `end`- indexes on a line where color 
     Color for chat title line and tree title line.
 - `color_extra_window = [-1, -1]`  
     Color for extra window body.
+- `color_extra_window_low = [245, -1]`  
+    Color with lower visibility in extra window.
+- `color_extra_window_standout = [153, -1]`  
+    Color for standout visibility in extra window.
 - `color_prompt = [255, -1]`  
     Color for prompt line.
 - `color_input_line = [255, -1]`  

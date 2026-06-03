@@ -71,7 +71,10 @@ def prepare_embeds(embeds, message_content):
             hw = (embed["thumbnail"]["height"], embed["thumbnail"]["width"])
         if "image" in embed and "url" in embed["image"]:
             if embed["image"]["url"] not in content:
-                content.append(embed["image"]["url"])
+                if embed_type == "rich":
+                    content.append(quote(embed["image"]["url"]))
+                else:
+                    content.append(embed["image"]["url"])
             main_url = embed["image"]["url"]
             if not proxy_url and "proxy_url" in embed["image"]:
                 proxy_url = embed["image"]["proxy_url"]
@@ -79,7 +82,10 @@ def prepare_embeds(embeds, message_content):
             media.append(True)
         if "video" in embed and "url" in embed["video"]:
             if "youtube." not in embed["video"]["url"] and embed["video"]["url"] not in content:
-                content.append(embed["video"]["url"])
+                if embed_type == "rich":
+                    content.append(quote(embed["video"]["url"]))
+                else:
+                    content.append(embed["video"]["url"])
             if not skip_main_url:
                 main_url = embed["video"]["url"]
             if not proxy_url and "proxy_url" in embed["video"]:

@@ -135,7 +135,7 @@ logger = logging.getLogger(__name__)
 
 
 def setup_secret_service():
-    """Check if secret-tool can be run, and if not, setup gnome-keyring daemon running on dbus"""
+    """Check if secret-tool can be run, and if not, setup secret service daemon running on dbus"""
     try:
         # ensure dbus is running
         if "DBUS_SESSION_BUS_ADDRESS" not in os.environ:
@@ -148,8 +148,7 @@ def setup_secret_service():
                     key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
-        # ensure gnome-keyring is running
-        # this should start gnome-keyring-daemon
+        # ensure secret service is running
         result = subprocess.run(
             ["secret-tool", "lookup", "service", "keyring-check"],
             stdout=subprocess.DEVNULL,
@@ -157,11 +156,11 @@ def setup_secret_service():
             check=False,
         )
         if "not activatable" in result.stderr.decode():
-            logger.warning("Cant use keyring: failed to start 'gnome-keyring' daemon, it is probably not installed")
+            logger.warning("Cant use keyring: failed to start Secret Service Provider daemon, it is probably not installed")
             return False
 
     except subprocess.CalledProcessError:
-        logger.warning("Cant use keyring: failed to start gnome-keyring")
+        logger.warning("Cant use keyring: failed to start Secret Service Provider")
         return False
 
     return True

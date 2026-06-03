@@ -874,7 +874,7 @@ def ranges_multiline_one_line(ranges, line_len, newline_len, quote=False):
     return line_ranges
 
 
-def split_long_line(line, max_len, align=0):
+def split_long_line(line, max_len, align=0, normalize=False):
     """
     Split long line into list, on nearest space to left or on newline.
     Optionally align newline to specified length.
@@ -912,6 +912,9 @@ def split_long_line(line, max_len, align=0):
             lines_list.append(line)
             break
         first = False
+    if normalize:
+        for num, line in enumerate(lines_list):
+            lines_list[num] = normalize_string(line, max_len, emoji_safe=True)
     return lines_list
 
 
@@ -2541,11 +2544,15 @@ def generate_extra_line_call(call_participants, volume_in, volume_out, max_len, 
     return shortened_str + right_text
 
 
-def generate_extra_window_call(call_participants, me_muted, max_len):
+def generate_extra_window_call(call_participants, me_muted, colors, max_len):
     """Generate extra windows title and body as a list of voice call participants and their states"""
     title_line = "Voice call participants:"
+    color_low = colors[8]
+    color_standout = colors[9]
     body = []
+    body_format = []
     body.append(f"Me - {"muted  " if me_muted else "unmuted"}")
+    body_format.append([(color_low, 1 if me_muted else None, 5, 12)])
     for participant in call_participants:
         name = participant["name"]
         text = f" - {"muted  " if participant["muted"] else "unmuted"}"
@@ -2554,11 +2561,20 @@ def generate_extra_window_call(call_participants, me_muted, max_len):
         if len(participant["name"]) + len(text) > max_len:
             name = name[:-(len(participant["name"]) + len(text) - max_len)]
         body.append(name + text)
-    return title_line, body
+        line_format = [([(color_low, 1 if participant["muted"] else None, len(name) + 3, len(name) + 10)])]
+        if participant["speaking"]:
+            line_format.append(([(color_standout, None, len(name) + 10, len(name + text))]))
+    return title_line, body, body_format
 
 
-def generate_extra_window_profile(user_data, user_roles, presence, max_len):
+def generate_extra_window_profile(user_data, user_roles, presence, colors, max_len):
     """Generate extra window title and body for user profile view"""
+    color_low = colors[8]
+    color_standout = colors[9]
+    title_line = ""
+    body = []
+    body_format = []
+
     # prepare user strings
     nick = ""
     if user_data["nick"]:
@@ -2578,7 +2594,6 @@ def generate_extra_window_profile(user_data, user_roles, presence, max_len):
     member_since = timestamp_from_snowflake(int(user_data["id"]), "%Y-%m-%d")
 
     # build title
-    title_line = ""
     items = [nick, global_name, username, pronouns]
     complete = True
     for num, item in enumerate(items):
@@ -2602,6 +2617,9 @@ def generate_extra_window_profile(user_data, user_roles, presence, max_len):
                 add_newline = True
         if add_newline:
             body_line += "\n"
+    lines = split_long_line(body_line, max_len)
+    body.extend(lines)
+    body_format.extend([*[None] * len(lines)])
 
     # activity
     if presence:
@@ -2616,21 +2634,29 @@ def generate_extra_window_profile(user_data, user_roles, presence, max_len):
             custom += presence["custom_status"]
         if custom:
             custom = f" - {custom}"
-        body_line += f"Status: {status}{custom}\n"
+        text = f"Status: {status}{custom}"
+        lines = split_long_line(text, max_len)
+        body.extend(lines)
+        body_format.extend(([(color_standout, 0, 0, 6), (color_standout, 1, 8, len(status) + 8)],), *[None] * (len(lines) - 1))
     else:
-        body_line += "Could not fetch status\n"
+        body.append("Status: Offline")
+        body_format.append(([(color_standout, 0, 0, 6), (color_standout, 1, 8, max_len)]))
 
-    # build body
+    # misc
     if user_data["tag"]:
-        body_line += f"Tag: {user_data["tag"]}\n"
-    body_line += f"Member since: {member_since}\n"
+        body.append(f"Tag: {user_data["tag"]}")
+        body_format.append(([(color_standout, 0, 0, 3)]))
+    body.append(f"Member since: {member_since}"[:max_len])
+    body_format.append(([(color_standout, 0, 0, 12)]))
     if user_data["joined_at"]:
-        body_line += f"Joined: {user_data["joined_at"]}\n"
+        body.append(f"Joined: {user_data["joined_at"]}")
+        body_format.append(([(color_standout, 0, 0, 6)]))
 
     # rich presences
     if presence:
         if presence["activities"]:
-            body_line += "\n"
+            body.append("")
+            body_format.append(None)
         for activity in presence["activities"]:
             activity_type = activity["type"]
             if activity_type == 0:
@@ -2648,98 +2674,147 @@ def generate_extra_window_profile(user_data, user_roles, presence, max_len):
             else:
                 state = ""
             duration = f"({format_seconds(int(time.time() - activity["start"]))})" if activity["start"] else ""
-            body_line += f"{action} {activity["name"]} {duration}\n{state}\n"
+            body.append(f"{action} {activity["name"]} {duration}"[:max_len])
+            body_format.append(([
+                (color_standout, 0, 0, len(action) + len(activity["name"]) + 1),
+                (color_low, 0, len(action) + len(activity["name"]) + 2, max_len),
+            ]))
+            body.append(f"  {state}")
+            body_format.append(None)
             if activity["details"]:
-                body_line += f"{activity["details"]}\n"
-            # if activity["small_text"]:
-            #     body_line += f"{activity["small_text"]}\n"
-            # if activity["large_text"]:
-            #     body_line += f"{activity["large_text"]}\n"
-            body_line += "\n"
+                body.append(f"  {activity["details"]}")
+                body_format.append(None)
+            # for text in (activity["small_text"], activity["large_text"]):
+            #     if not text:
+            #         continue
+            #     lines = split_long_line(body_line, max_len)
+            #     body.extend(lines)
+            #     body_format.extend([*[None] * len(lines)])
+            body.append("")
+            body_format.append(None)
 
+    # misc
     if roles_string:
-        body_line += f"Roles: {roles_string}\n"
+        roles = split_long_line(f"Roles: {roles_string}", max_len)
+        body.extend(roles)
+        body_format.extend([([(color_standout, 0, 0, 5)]), *[None] * (len(roles) - 1)])
+        body.append("")
+        body_format.append(None)
     if user_data["bio"]:
-        body_line += f"Bio:\n{user_data["bio"]}"
+        body.append("Bio:")
+        body_format.append(([(color_standout, 0, 0, 3)]))
+        bio = split_long_line(user_data["bio"], max_len)
+        body.extend(bio)
+        body_format.extend([*[None] * len(bio)])
 
-    body = split_long_line(body_line, max_len)
-    return title_line, body
+    return title_line, body, body_format
 
 
-def generate_extra_window_channel(channel, voice_states, max_len, use_nick):
+def generate_extra_window_channel(channel, voice_states, use_nick, colors, max_len):
     """Generate extra window title and body for channel info view"""
+    color_low = colors[8]
+    color_standout = colors[9]
+    body = []
+    body_format = []
     if channel["type"] == 2:   # voice channel
         title_line = f"Voice Channel: {channel["name"]}"[:max_len]
-        body_line = ""
         allow_voice = channel.get("allow_voice", True)
         allow_speak = channel.get("allow_speak", True)
         if not allow_voice:
-            body_line += "No voice permission\n"
+            body.append("No voice permission"[:max_len])
+            body_format.append([(None, 1, 0, max_len)])
         elif not allow_speak:
-            body_line += "No speak permission\n"
+            body.append("No speak permission"[:max_len])
+            body_format.append([(None, 1, 0, max_len)])
         if channel["topic"]:
-            body_line += f"Topic:\n{channel["topic"]}\n"
+            body.append("Topic:")
+            body_format.append(None)
+            topic = split_long_line(channel["topic"], max_len)
+            body.extend(topic)
+            body_format.extend(([(color_low, 0, 0, max_len)],) * len(topic))
         else:
-            body_line += "No topic.\n"
-        body_line += "\n"
+            body.append("No topic.")
+            body_format.append(None)
+        body.append("")
+        body_format.append(None)
         if voice_states and len(voice_states) > 1:
             limit = f"/{channel["user_limit"]}" if channel["user_limit"] else ""
-            body_line += f"{voice_states[0]}{limit} participant{"s" if voice_states[0] > 1 else ""}:\n"   # 0 is count
+            text = f"{voice_states[0]}{limit} participant{"s" if voice_states[0] > 1 else ""}:"   # 0 is count
+            body.append(text[:max_len])
+            body_format.append([(color_standout, 0, 0, max_len)])
             for value in voice_states.values():
                 if isinstance(value, int):
                     continue
                 username, global_name, nick = value
                 if (nick and use_nick) or global_name:
-                    body_line += f"  {nick if nick else global_name} ({username})\n"
+                    body.append(f"  {nick if nick else global_name} ({username})"[:max_len])
+                    body_format.append([(color_low, 0, len(nick if nick else global_name) + 3, max_len)])
                 else:
-                    body_line += "  " + username
+                    body.append(f"  {username}"[:max_len])
+                    body_format.append(None)
         else:
-            limit = f" ({channel["user_limit"]} max.)" if channel["user_limit"] else ""
-            body_line += "No participants." + limit
-        body = split_long_line(body_line, max_len)
-        return title_line, body
+            text = "No participants." + (f" ({channel["user_limit"]} max.)" if channel["user_limit"] else "")
+            body.append(text[:max_len])
+            if channel["user_limit"]:
+                body_format.append([(color_low, 0, 17, max_len)])
+            else:
+                body_format.append(None)
+        return title_line, body, body_format
 
     title_line = f"Channel: {channel["name"]}"[:max_len]
-    body_line = ""
     no_embed = not channel.get("allow_attach", True)
     no_write = not channel.get("allow_write", True)
     if no_embed and no_write:
-        body_line += "No write and embed permissions\n"
+        body.append("No write and embed permissions"[:max_len])
+        body_format.append([(None, 1, 0, max_len)])
     elif no_embed:
-        body_line += "No embed permissions\n"
+        body.append("No embed permissions"[:max_len])
+        body_format.append([(None, 1, 0, max_len)])
     elif no_write:
-        body_line += "No write permissions\n"
+        body.append("No write permissions"[:max_len])
+        body_format.append([(None, 1, 0, max_len)])
     if channel["topic"]:
-        body_line += f"Topic:\n{channel["topic"]}"
+        body.append("Topic:")
+        body_format.append(None)
+        topic = split_long_line(channel["topic"], max_len)
+        body.extend(topic)
+        body_format.extend(([(color_low, 0, 0, max_len)],) * len(topic))
     else:
-        body_line += "No topic."
+        body.append("No topic.")
+        body_format.append(None)
 
-    body = split_long_line(body_line, max_len)
-    return title_line, body
+    return title_line, body, body_format
 
 
-def generate_extra_window_guild(guild, max_len):
+def generate_extra_window_guild(guild, colors, max_len):
     """Generate extra window title and body for guild info view"""
     title_line = f"Server: {guild["name"]}"[:max_len]
-
-    # build body
-    body_line = f"Members: {guild["member_count"]}\n"
-    if guild["description"]:
-        body_line += f"Description:\n{guild["description"]}"
-    else:
-        body_line += "No description."
-
-    body = split_long_line(body_line, max_len)
-    return title_line, body
-
-
-def generate_extra_window_summaries(summaries, max_len, channel_name=None):
-    """Generate extra window title and body for summaries list view"""
-    if channel_name:
-        title_line = f"[{channel_name}] Summaries:"
-    else:
-        title_line = "Summaries:"
+    color_low = colors[8]
+    color_standout = colors[9]
     body = []
+    body_format = []
+    body.append(f"Members: {guild["member_count"]}")
+    body_format.append([(color_standout, 0, 9, 20)])
+    if guild["description"]:
+        body.append("Description:")
+        body_format.append(None)
+        description = split_long_line(guild["description"], max_len)
+        body.extend(description)
+        body_format.extend(([(color_low, 0, 0, max_len)],) * len(description))
+    else:
+        body.append("No description.")
+        body_format.append(None)
+    return title_line, body, body_format
+
+
+def generate_extra_window_summaries(summaries, colors, max_len, channel_name=None):
+    """Generate extra window title and body for summaries list view"""
+    title_line = "Summaries:"
+    color_low = colors[8]
+    if channel_name:
+        title_line = f"[{channel_name}] {title_line}"
+    body = []
+    body_format = []
     indexes = []
     if summaries:
         for summary in reversed(summaries):
@@ -2751,12 +2826,13 @@ def generate_extra_window_summaries(summaries, max_len, channel_name=None):
                 "message_id": summary["message_id"],
             })
             body.extend(summary_lines)
+            body_format.extend(([(color_low, None, 0, len(summary_date) + 2)], *[None] * (len(summary_lines) - 1)))
     else:
         body = ["No summaries."]
-    return title_line, body, indexes
+    return title_line, body, body_format, indexes
 
 
-def generate_extra_window_search(messages, roles, channels, blocked, total_msg, config, max_len, limit_lines=3, newline_len=4, pinned=False):
+def generate_extra_window_search(query, messages, roles, channels, blocked, total_msg, config, colors, max_len, limit_lines=3, newline_len=4, pinned=False):
     """
     Generate extra window title and body for message search view
     Possible options for format_message:
@@ -2775,6 +2851,8 @@ def generate_extra_window_search(messages, roles, channels, blocked, total_msg, 
     emoji_as_text = config["emoji_as_text"]
     format_message = config["format_search_message"]
     use_global_name = "%global_name" in format_message
+    color_low = colors[8]
+    color_standout = colors[9]
 
     if pinned:
         title_line = f"Pinned messages ({total_msg}):"
@@ -2782,6 +2860,7 @@ def generate_extra_window_search(messages, roles, channels, blocked, total_msg, 
         title_line = f"Search results: {total_msg} messages"
 
     body = []
+    body_format = []
     indexes = []
     if messages:
         for message in messages:
@@ -2833,15 +2912,15 @@ def generate_extra_window_search(messages, roles, channels, blocked, total_msg, 
                     "message_id": message["id"],
                 })
                 continue
-
             message_string = (
                 format_message
                 .replace("%username", normalize_string(message["username"], limit_username, emoji_safe=True))
                 .replace("%global_name", normalize_string(global_name, limit_username, emoji_safe=True))
                 .replace("%date", generate_timestamp(message["timestamp"], format_date, convert_timezone))
                 .replace("%channel", normalize_string(channel_name, limit_channel_name, emoji_safe=True, fill=fill_ch_name))
-                .replace("%content", content)
             )
+            pre_content_len = len(message_string.split("%content")[0])
+            message_string = message_string.replace("%content", content)
 
             message_lines = split_long_line(message_string, max_len, align=newline_len)
             message_lines = message_lines[:limit_lines]
@@ -2851,24 +2930,44 @@ def generate_extra_window_search(messages, roles, channels, blocked, total_msg, 
                 "channel_id": message["channel_id"],
             })
             body.extend(message_lines)
+            first_line_format = [(color_low, 1, 0, limit_channel_name), ((color_low, None, limit_channel_name, pre_content_len))]
+            if query:
+                for m in re.finditer(re.escape(query), message_lines[0][pre_content_len:], re.IGNORECASE):
+                    first_line_format.append((color_standout, 1, m.start() + pre_content_len, m.end() + pre_content_len))
+            body_format.append(first_line_format)
+            for line in message_lines[1:]:
+                line_format = []
+                if query:
+                    for m in re.finditer(re.escape(query), line, re.IGNORECASE):
+                        line_format.append((color_standout, 1, m.start(), m.end()))
+                body_format.append(line_format)
 
     else:
         body = ["No messages found."]
-    return title_line, body, indexes
+    return title_line, body, body_format, indexes
 
 
-def generate_extra_window_search_ext(extensions, max_len):
+def generate_extra_window_search_ext(extensions, colors, max_len):
     """Generate extra window title and body for extensions search view"""
     title_line = f"Extensions search results: {len(extensions)} extensions"
+    color_low = colors[8]
+    color_standout = colors[9]
     body = []
-
+    body_format = []
     for extension in extensions:
         official = " (official)" if extension[3] else ""
         description = str(extension[2]).replace("An extension for endcord discord TUI client, that ", "")
         description = description.capitalize()
-        body.append(normalize_string(extension[1] + official + " - " + description, max_len, emoji_safe=True, dots=True, fill=False))
-
-    return title_line, body
+        name = extension[1] + official + " - "
+        body.append(normalize_string(name + description, max_len, emoji_safe=True, dots=True, fill=False))
+        if extension[3]:
+            body_format.append([
+                (color_standout, None, len(extension[1]) + 1, len(extension[1]) + len(official)),
+                (color_low, None, len(name) - 1, len(name) + len(description)),
+            ])
+        else:
+            body_format.append([(color_low, None, len(name) - 1, len(name) + len(description))])
+    return title_line, body, body_format
 
 
 def generate_extra_window_text(title_text, body_text, max_len):
@@ -2916,13 +3015,44 @@ def generate_extra_window_assist(found, assist_type, max_len, placeholder_emoji=
     return title_line[:max_len], body
 
 
-def generate_extra_window_reactions(reaction, details, max_len):
+def generate_extra_window_reactions(reaction, details, colors, max_len):
     """Generate extra window title and body for reactions"""
     title_line = f"Users who reacted {reaction["emoji"]}: "
+    color_low = colors[8]
     body = []
+    body_format = []
     for user in details:
-        body.append(f"{user["global_name"]} ({user["username"]})"[:max_len])
-    return title_line[:max_len], body
+        line = f"{user["global_name"]} ({user["username"]})"[:max_len]
+        body.append(line)
+        body_format.append([(color_low, None, len(user["global_name"]) + 1, len(line))])
+    return title_line[:max_len], body, body_format
+
+
+def generate_extra_window_stats(data, texts, colors, max_len):
+    """Generate extra window for stats command"""
+    title_line = "Client stats:"
+    color_standout = colors[9]
+    body = []
+    body_format = []
+    data_idx = 0
+    for text in texts:
+        value = data[data_idx]
+        if isinstance(value, tuple):
+            line = f"{text}: {value[0]} ({value[1]})"[:max_len]
+            body.append(line)
+            body_format.append([
+                (color_standout, None, len(text) + 2, len(text) + 2 + len(str(value[0]))),
+                (color_standout, None, len(text) + len(str(value[0])) + 4, len(line) - 1)],
+            )
+        elif value is None:
+            body.append(text[:max_len])
+            body_format.append([])
+        else:
+            line = f"{text}: {value}"[:max_len]
+            body.append(line)
+            body_format.append([(color_standout, None, len(text) + 2, len(line))])
+        data_idx += 1
+    return title_line[:max_len], body, body_format
 
 
 def generate_forum(threads, blocked, max_length, colors, colors_formatted, config):

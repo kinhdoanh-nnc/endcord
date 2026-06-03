@@ -3,6 +3,8 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, version 3.
 
+### "Abandon all hope, ye who enter here." ###
+
 import curses
 import importlib.util
 import logging
@@ -52,8 +54,9 @@ support_call = (
 )
 cythonized = importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.search")
 uses_pgcurses = tui.uses_pgcurses
-
 logger = logging.getLogger(__name__)
+recorder = peripherals.Recorder()
+
 ENABLE_EXTENSIONS = True
 MESSAGE_UPDATE_ELEMENTS = ("id", "content", "mentions", "mention_roles", "mention_everyone", "embeds", "edited")
 MEDIA_EMBEDS = ("image", "gifv", "video", "audio", "rich")
@@ -75,12 +78,9 @@ FORUM_COMMANDS = (1, 2, 7, 13, 14, 15, 17, 20, 22, 25, 27, 29, 30, 31, 32, 40, 4
 COLLAPSE_ALL_EXCEPT_OPTIONS = ("current", "selected", "above", "bellow")
 STANDING_TYPES = ("All Good", "Limited", "Very Limited", "At risk", "Suspended")
 ASSISTED_COMMANDS = ("set ", "string_select ", "set_notifications ", "game_detection_blacklist ", "switch_tab ", "goto ", "collapse_all_except ", "insert_timestamp ", "voice_set_input_device ", "switch_profile ", "gif ")
-
+STATS_COMMAND_TEXT = ("Run time", "Gateway events/h", "Gateway messages/h", "Gateway ping time", "Message buffer size", "Total API requests", "API response time", "Cache sizes", "  Cached members", "  Deleted messages", "  Summaries", "  Image cache")
 match_emoji = re.compile(r"<:(.*):(\d*)>")
 match_youtube = re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}")
-
-
-recorder = peripherals.Recorder()
 
 
 class Endcord:
@@ -314,6 +314,7 @@ class Endcord:
         self.extra_window_open = False
         self.extra_indexes = []
         self.extra_body = []
+        self.extra_format = []
         self.viewing_user_data = {"id": None, "guild_id": None}
         self.read_state = {}
         self.hidden_channels = []
@@ -1966,8 +1967,9 @@ class Endcord:
                     self.ignore_typing = True
                     max_w = self.tui.get_dimensions()[2][1]
                     extra_title, extra_body = formatter.generate_extra_window_text("Search:", SEARCH_HELP_TEXT, max_w)
+                    extra_format = [[(self.colors[9], None, 0, s.find(":"))] for s in SEARCH_HELP_TEXT.split("\n")]
                     self.stop_assist(close=False)
-                    self.tui.draw_extra_window(extra_title, extra_body)
+                    self.tui.draw_extra_window(extra_title, extra_body, extra_format)
                     self.extra_window_open = True
                 else:
                     self.close_extra_window()
@@ -2067,7 +2069,7 @@ class Endcord:
                     self.assist_type = 5
                     self.tui.instant_assist = True
                     self.extra_window_open = True
-                    self.extra_bkp = (self.tui.extra_window_title, self.tui.extra_window_body)
+                    self.extra_bkp = (self.tui.extra_window_title, self.tui.extra_window_body, self.tui.extra_window_format)
                     if self.vim_mode:
                         self.tui.set_vim_insert(True)
                         self.update_status_line()
@@ -2295,12 +2297,13 @@ class Endcord:
                                 if message_id:
                                     self.go_to_message(message_id)
                         elif clicked_type == 10:   # embed image
+                            embed = self.messages[msg_index]["embeds"][clicked_id]
                             # check if its spoiler and spoil
                             embed_name = self.messages[msg_index]["embeds"][clicked_id]["name"]
                             if embed_name and embed_name.startswith("SPOILER_") and 1000 + clicked_id not in self.messages[msg_index].get("spoiled", []):
                                 self.spoil(msg_index, 1000 + clicked_id)
                             else:
-                                url = self.messages[msg_index]["embeds"][clicked_id]["url"]
+                                url = embed["main_url"] if not embed["url"].startswith("https://") else embed["url"]
                                 self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(url, False, True)))
                                 self.download_threads[-1].start()
 
@@ -2651,8 +2654,8 @@ class Endcord:
                                 continue
                             self.stop_assist(close=False)
                             max_w = self.tui.get_dimensions()[2][1]
-                            extra_title, extra_body = formatter.generate_extra_window_reactions(reactions[num], reaction_details, max_w)
-                            self.tui.draw_extra_window(extra_title, extra_body)
+                            extra_title, extra_body, extra_format = formatter.generate_extra_window_reactions(reactions[num], reaction_details, self.colors, max_w)
+                            self.tui.draw_extra_window(extra_title, extra_body, extra_format)
                             self.extra_window_open = True
                     except ValueError:
                         pass
@@ -3098,8 +3101,9 @@ class Endcord:
                 self.ignore_typing = True
                 max_w = self.tui.get_dimensions()[2][1]
                 extra_title, extra_body = formatter.generate_extra_window_text("Search:", SEARCH_HELP_TEXT, max_w)
+                extra_format = [[(self.colors[9], None, 0, s.find(":"))] for s in SEARCH_HELP_TEXT.split("\n")]
                 self.stop_assist(close=False)
-                self.tui.draw_extra_window(extra_title, extra_body)
+                self.tui.draw_extra_window(extra_title, extra_body, extra_format)
                 self.extra_window_open = True
 
         elif cmd_type == 17:   # COPY_CHANNEL_LINK
@@ -3913,9 +3917,9 @@ class Endcord:
                 max_w = self.tui.get_dimensions()[2][1]
                 self.search_ext = True
                 self.search_results = extensions
-                extra_title, extra_body = formatter.generate_extra_window_search_ext(extensions, max_w)
+                extra_title, extra_body, extra_format = formatter.generate_extra_window_search_ext(extensions, self.colors, max_w)
                 self.stop_assist(close=False)
-                self.tui.draw_extra_window(extra_title, extra_body, select=True)
+                self.tui.draw_extra_window(extra_title, extra_body, extra_format, select=True)
                 self.extra_window_open = True
             else:
                 self.update_extra_line("Extension search failed")
@@ -3929,7 +3933,8 @@ class Endcord:
             self.update_extra_line(f"Roles saved to: {os.path.join(peripherals.log_path, "Debug")}")
 
         elif cmd_type == 76:   # SHOW_STATS
-            gateway_events_per_h, gateway_msg_per_h, gateway_ping_time, messages_buffer_size, members_count = self.gateway.get_stats()
+            run_time = formatter.format_seconds(int(time.time()) - self.start_time, nice=True)
+            g_events_per_h, g_msg_per_h, g_ping_time, msg_buffer_size, members_count = self.gateway.get_stats()
             total_requests, api_ping_time = self.discord.get_stats()
             deleted_msg_count = 0
             for channel in self.deleted_cache:
@@ -3939,22 +3944,14 @@ class Endcord:
                 for channel in guild["channels"]:
                     summaries_count += len(channel["summaries"])
             imgs_count, imgs_size = utils.get_dir_size(os.path.expanduser(peripherals.cache_path), mb=True)
-            text = f"Run time: {formatter.format_seconds(int(time.time()) - self.start_time, nice=True)}\n"
-            text += f"Gateway events/h: {gateway_events_per_h}\n"
-            text += f"Gateway messages/h: {gateway_msg_per_h}\n"
-            text += f"Gateway ping time: {gateway_ping_time} s\n"
-            text += f"Message buffer size: {messages_buffer_size}\n"
-            text += f"Total API requests: {total_requests}\n"
-            text += f"API response time: {api_ping_time} s\n"
-            text += "Caches sizes:\n"
-            text += f"  Cached members: {members_count}\n"
-            text += f"  Deleted messages: {deleted_msg_count}\n"
-            text += f"  Summaries: {summaries_count}\n"
-            text += f"  Image cache: {imgs_count} ({imgs_size} MB)\n"
+            data = (
+                run_time, g_events_per_h, g_msg_per_h, str(g_ping_time) + "s", msg_buffer_size,
+                total_requests, str(api_ping_time) + "s", None, members_count, deleted_msg_count, summaries_count, (imgs_count, str(imgs_size) + "MB"),
+            )
             self.stop_assist(close=False)
             max_w = self.tui.get_dimensions()[2][1]
-            extra_title, extra_body = formatter.generate_extra_window_text("Client stats:", text, max_w)
-            self.tui.draw_extra_window(extra_title, extra_body, reset_scroll=reset)
+            extra_title, extra_body, extra_format = formatter.generate_extra_window_stats(data, STATS_COMMAND_TEXT, self.colors, max_w)
+            self.tui.draw_extra_window(extra_title, extra_body, extra_format, reset_scroll=reset)
             self.extra_window_open = True
 
         elif cmd_type == 77:   # TOGGLE_TREE
@@ -5123,11 +5120,11 @@ class Endcord:
                     break
 
         # generate and draw extra window
-        extra_title, extra_body = formatter.generate_extra_window_profile(user_data, roles, selected_presence, max_w)
+        extra_title, extra_body, extra_format = formatter.generate_extra_window_profile(user_data, roles, selected_presence, self.colors, max_w)
         if self.emoji_as_text:
             extra_title = utils.demojize(extra_title)
             extra_body = [utils.demojize(x) for x in extra_body]
-        self.tui.draw_extra_window(extra_title, extra_body, reset_scroll=reset)
+        self.tui.draw_extra_window(extra_title, extra_body, extra_format, reset_scroll=reset)
         self.extra_window_open = True
 
 
@@ -5173,23 +5170,25 @@ class Endcord:
         """Format and show extra window with channel/guild information"""
         max_w = self.tui.get_dimensions()[2][1]
         if guild:
-            extra_title, extra_body = formatter.generate_extra_window_guild(channel, max_w)
+            extra_title, extra_body, extra_format = formatter.generate_extra_window_guild(channel, self.colors, max_w)
         else:
             this_voice_states = self.gateway.get_voice_states().get(channel["id"], {})
-            extra_title, extra_body = formatter.generate_extra_window_channel(channel, this_voice_states, max_w, self.use_nick)
-        self.tui.draw_extra_window(extra_title, extra_body)
+            extra_title, extra_body, extra_format = formatter.generate_extra_window_channel(channel, this_voice_states, self.use_nick, self.colors, max_w)
+        self.tui.draw_extra_window(extra_title, extra_body, extra_format)
         self.extra_window_open = True
 
 
     def view_summaries(self, channel_id=None):
         """Format and show extra window with this or specified channel summaries"""
         summaries = []
+        channel_name = None
         if not channel_id:
             for guild in self.summaries:
                 if guild["guild_id"] == self.active_channel["guild_id"]:
                     for channel in guild["channels"]:
                         if channel["channel_id"] == self.active_channel["channel_id"]:
                             summaries = channel["summaries"]
+
                             break
                     break
         else:
@@ -5198,14 +5197,15 @@ class Endcord:
                 for channel in guild["channels"]:
                     if channel["channel_id"] == channel_id:
                         summaries = channel["summaries"]
+                        channel_name = channel["name"]
                         found = True
                         break
                 if found:
                     break
         self.stop_assist(close=False)
         max_w = self.tui.get_dimensions()[2][1]
-        extra_title, extra_body, self.extra_indexes = formatter.generate_extra_window_summaries(summaries, max_w)
-        self.tui.draw_extra_window(extra_title, extra_body, select=True)
+        extra_title, extra_body, extra_format, self.extra_indexes = formatter.generate_extra_window_summaries(summaries, self.colors, max_w, channel_name)
+        self.tui.draw_extra_window(extra_title, extra_body, extra_format, select=True)
         self.extra_window_open = True
 
 
@@ -5227,17 +5227,19 @@ class Endcord:
                 "messages": pinned,
             })
         self.stop_assist(close=False)
-        extra_title, extra_body, self.extra_indexes = formatter.generate_extra_window_search(
+        extra_title, extra_body, extra_format, self.extra_indexes = formatter.generate_extra_window_search(
+            None,
             pinned,
             self.current_roles,
             self.current_channels,
             self.blocked,
             len(pinned),
             self.config,
+            self.colors,
             self.tui.get_dimensions()[2][1],
             pinned=True,
         )
-        self.tui.draw_extra_window(extra_title, extra_body, select=True)
+        self.tui.draw_extra_window(extra_title, extra_body, extra_format, select=True)
         self.extra_window_open = True
 
 
@@ -5262,8 +5264,8 @@ class Endcord:
                     return
                 self.stop_assist(close=False)
                 max_w = self.tui.get_dimensions()[2][1]
-                extra_title, extra_body = formatter.generate_extra_window_reactions(reactions[0], reaction_details, max_w)
-                self.tui.draw_extra_window(extra_title, extra_body)
+                extra_title, extra_body, extra_format = formatter.generate_extra_window_reactions(reactions[0], reaction_details, self.colors, max_w)
+                self.tui.draw_extra_window(extra_title, extra_body, extra_format)
                 self.extra_window_open = True
             else:
                 self.ignore_typing = True
@@ -5278,12 +5280,13 @@ class Endcord:
     def view_voice_call_list(self, reset=False):
         """Show voice call participants and their states in extra window"""
         self.stop_assist(close=False)
-        extra_title, extra_body = formatter.generate_extra_window_call(
+        extra_title, extra_body, extra_format = formatter.generate_extra_window_call(
             self.call_participants,
             not(self.state["volume_in"]),
+            self.colors,
             self.tui.get_dimensions()[2][1],
         )
-        self.tui.draw_extra_window(extra_title, extra_body, reset_scroll=reset)
+        self.tui.draw_extra_window(extra_title, extra_body, extra_format, reset_scroll=reset)
         self.extra_window_open = True
         self.voice_call_list_open = True
 
@@ -5488,16 +5491,18 @@ class Endcord:
             return
         if len(self.search_results) >= total_search_messages:
             self.search_end = True
-        extra_title, self.extra_body, self.extra_indexes = formatter.generate_extra_window_search(
+        extra_title, self.extra_body, self.extra_format, self.extra_indexes = formatter.generate_extra_window_search(
+            content,
             self.search_results,
             self.current_roles,
             self.current_channels,
             self.blocked,
             total_search_messages,
             self.config,
+            self.colors,
             self.tui.get_dimensions()[2][1],
         )
-        self.tui.draw_extra_window(extra_title, self.extra_body, select=True)
+        self.tui.draw_extra_window(extra_title, self.extra_body, self.extra_format, select=True)
         self.remove_running_task("Searching", 4)
 
 
@@ -5528,18 +5533,21 @@ class Endcord:
             self.search_results += search_chunk
             if len(self.search_results) >= total_search_messages:
                 self.search_end = True
-            extra_title, extra_body_chunk, indexes_chunk = formatter.generate_extra_window_search(
+            extra_title, extra_body_chunk, extra_format_chunk, indexes_chunk = formatter.generate_extra_window_search(
+                self.search[0],
                 search_chunk,
                 self.current_roles,
                 self.current_channels,
                 self.blocked,
                 total_search_messages,
                 self.config,
+                self.colors,
                 self.tui.get_dimensions()[2][1],
             )
             self.extra_body += extra_body_chunk
+            self.extra_format += extra_format_chunk
             self.extra_indexes += indexes_chunk
-            self.tui.draw_extra_window(extra_title, self.extra_body, select=len(self.extra_body))
+            self.tui.draw_extra_window(extra_title, self.extra_body, self.extra_format, select=len(self.extra_body))
         self.remove_running_task("Searching", 4)
 
 
@@ -5791,7 +5799,7 @@ class Endcord:
         extra_title, extra_body = formatter.generate_extra_window_assist(self.assist_found, assist_type, max_w, self.placeholder_emoji)
         self.extra_window_open = True
         if (self.search or self.search_gif or self.command) and not (self.assist_word or self.assist_word == " "):
-            self.extra_bkp = (self.tui.extra_window_title, self.tui.extra_window_body)
+            self.extra_bkp = (self.tui.extra_window_title, self.tui.extra_window_body, self.tui.extra_window_format)
         self.assist_word = assist_word
         self.execute_extensions_methods("on_assist", self.assist_found, assist_type, cache=True)
         self.tui.draw_extra_window(extra_title, extra_body, select=True)
@@ -5809,7 +5817,7 @@ class Endcord:
             # if search was open, restore it
             if (self.search or self.command) and self.extra_bkp:
                 self.extra_window_open = True
-                self.tui.draw_extra_window(self.extra_bkp[0], self.extra_bkp[1], select=True)
+                self.tui.draw_extra_window(self.extra_bkp[0], self.extra_bkp[1], self.extra_bkp[2], select=True)
         else:
             self.tui.instant_assist = False
 
@@ -8446,7 +8454,7 @@ class Endcord:
                     self.extend_search()
 
             # check if assist is needed
-            assist_word, assist_type = self.tui.get_assist()
+            assist_word, assist_type = self.tui.get_assist(extended=(self.search or self.command or self.assist_type == 6))
             if assist_type and not self.uploading:
                 if assist_type == 100 and self.assist_type != 5:   # esc or " " in assist_word or backspace:
                     self.stop_assist()

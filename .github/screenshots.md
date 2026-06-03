@@ -1,5 +1,4 @@
 <div align="center">
-<h1>Endcord</h1>
 <a href="https://github.com/sparklost/endcord?tab=readme-ov-file#features">Features</a> |
 <a href="https://github.com/sparklost/endcord?tab=readme-ov-file#configuration">Config</a> |
 <a href="https://github.com/sparklost/endcord?tab=readme-ov-file#usage">Usage</a> |
@@ -12,7 +11,7 @@
 <br><br>
 <b>Standard theme:</b><br>
 <img src="./screenshots/01.png" alt="Standard theme" width="864">
-(Note: kitty protocol inline images can be setup with <a href="github.com/sparklost/endcord-image-inline">this</a> extension, and <a href="github.com/sparklost/endcord-image-emoji">this</a> for emoji)
+<br>(Note: kitty protocol inline images can be setup with <a href="github.com/sparklost/endcord-image-inline">this</a> extension, and <a href="github.com/sparklost/endcord-image-emoji">this</a> for emoji)
 <br><br>
 <b>Client command assist above input line:</b><br>
 <img src="./screenshots/02.png" alt="Client command assist above input line:" width="800">
