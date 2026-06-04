@@ -1095,8 +1095,8 @@ def command_string(text):
     elif text_lower.startswith("search_extensions"):
         cmd_type = 73
 
-    # 74 - RESIZE_EXTRA_WINDOW
-    elif text_lower.startswith("resize_extra_window"):
+    # 74 - RESIZE_POPUP_WINDOW
+    elif text_lower.startswith("resize_popup_window"):
         cmd_type = 74
         try:
             num = int(text.split(" ")[1])

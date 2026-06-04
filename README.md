@@ -175,16 +175,16 @@ Type path to file that should be uploaded and press enter. Cached content will b
 Wait until file is uploaded and then send the message. Multiple files can be added this way.  
 Path can be absolute or relative, and has autocomplete on `tab` key.  
 If file size exceeds discord's limit it will not be added to the sent message.  
-Attachments can be navigated with `Ctrl+Left/Right` in extra line (above status line).  
+Attachments can be navigated with `Ctrl+Left/Right` in popup line (above status line).  
 `Ctrl+X` will cancel ALL downloads and attachments, with a confirmation prompt.  
 `Ctrl+K` will cancel selected attachment (and stop upload) and remove it from attachments list.
 
-### Extra window and member list navigation
-Same controls for navigating in extra window and member list:
+### Popup window and member list navigation
+Same controls for navigating in popup window and member list:
 `Alt+Up/Down` - Go up/down  
 `Alt+Enter` - perform action on selected line (depends on context)  
-Extra window navigation is prioritized over member list.  
-Extra window is drawn for viewing:
+Popup window navigation is prioritized over member list.  
+Popup window is drawn for viewing:
 - User profile info - from selected message (`Alt+P`)
 - Channel/server info - from selected tree channel (`Alt+I`)
 - Summaries for currently open channel (`Alt+S`), `Alt+Enter` will jump to first message in chat on that summary topic.
@@ -193,7 +193,7 @@ Extra window is drawn for viewing:
 `Alt+Enter` in member list will show user profile of the selected member.  
 
 ### Assist with mention, role, channel, emoji, sticker
-When typing eg. username prepended with `@`, assist will open as extra window with search results for typed text after `@` (search is case-insensitive).  
+When typing eg. username prepended with `@`, assist will open as popup window with search results for typed text after `@` (search is case-insensitive).  
 Assist triggers are (the first character): `@username`, `@role`, `#channel`, `:emoji:`, `;sticker;`.  
 Press `Esc` to stop assist. Re-type trigger to start it again.  
 Navigation: `Alt+Up/Down` - Go up/down, `Alt+Enter` or `Enter` - insert selected item.  
@@ -209,7 +209,7 @@ To add/remove one of already present reactions, only type its index (starts from
 If this account reacted to the message, that reaction will have `*` prepended to reaction count.  
 
 ### Escape key priority order
-Stop recording, close extra window, stop replying, everything else.
+Stop recording, close popup window, stop replying, everything else.
 
 ### Client-side commands
 Press `Ctrl+/` to switch to command mode. Command mode has its own assist but can also trigger regular assist.  

@@ -26,7 +26,7 @@
 
 ### Chat
 - `Enter` - Send message
-- `Arrow-Up/Down` - Navigating messages
+- `Arrow-Up/Down` - Navigating messages / popup window if its open and setting `assist_swap_bindings = True`
 - `Ctrl+R` - Reply to selected message
 - `Ctrl+E` - Edit selected message
 - `Ctrl+D` - Delete selected message
@@ -47,15 +47,15 @@
 - `Alt+N` - Show pinned messages in current channel
 - `Ctrl+Shift+V` - This is common terminal binding to paste text, better use: `Ctrl+V` binding for smart paste
 
-### Extra line
+### Popup line
 - `Alt+<` - Previous uploaded/uploading attachment
 - `Alt+>` - Next uploaded/uploading attachment
-- `Ctrl+Y-Up/Down` - Resize extra window +/- 1
 
-### Extra window
-- `Alt+Up/Down` - navigate in extra window / member list
-- `Alt+Enter` - select in extra window / member list
+### Popup window
+- `Alt+Up/Down` - navigate in popup window / member list if open and no popup window / chat if popup window is open and setting `assist_swap_bindings = True`
+- `Alt+Enter` - select in popup window / member list
 - `Alt+V` - Preview selected file in upload assist or when searching gif or attachments ready to send
+- `Ctrl+Y-Up/Down` - Resize popup window +/- 1
 
 ### Other
 - `Ctrl+/` * - Open command palette
@@ -94,7 +94,7 @@ Some keybindings are used by terminals or OS itself, so they are by default rebo
 ## Mouse controls
 ### Double click in:
 - Tree - or enter channel
-- Extra window - select item
+- Popup window - select item
 - Member list - view member profile
 - Input line - select a word
 
@@ -114,7 +114,7 @@ Some keybindings are used by terminals or OS itself, so they are by default rebo
 - Scroll up/down in all windows
 - Click to select in all windows, in tree also: un/collapse
 - Click on tab string to switch tabs (only if exactly `format_title_line_r = "%tabs"` in config)
-- Click on extra window title and drag it to resize it
+- Click on popup window title and drag it to resize it
 - Click on scrollbar to move it there, or drag it
 - Click on tree border to toggle minimized tree state
 - Click on buttons in call UI, click on input/output volume values to toggle mute each
@@ -198,13 +198,13 @@ Special commands available only for command-bindings are documented in [Commands
 - `n` - Show pinned messages in current channel
 - `Ctrl+Shift+V` - This is common terminal binding to paste text, better use: `paste` command
 
-### extra line
+### popup line
 - `<` - Previous uploaded/uploading attachment
 - `>` - Next uploaded/uploading attachment
 
-### extra window
-- `,/.` - navigate in extra window / member list
-- `q` - select in extra window / member list
+### popup window
+- `,/.` - navigate in popup window / member list
+- `q` - select in popup window / member list
 - `V` - Preview selected file in upload assist or when searching gif or attachments ready to send
 
 ### other

@@ -63,6 +63,7 @@ settings = {
     "only_one_open_server": False,
     "remember_collapsed_channels": False,
     "assist": True,
+    "assist_swap_binding": True,
     "assist_skip_app_command": False,
     "assist_limit": 50,
     "assist_score_cutoff": 15,
@@ -281,8 +282,8 @@ command_bindings = {
     "11": "command_palette; type 'goto '",
     "336": "tree_select server; collapse_all_except selected",
     "337": "tree_select server prev; collapse_all_except selected",
-    "25-259": "resize_extra_window +1",
-    "25-258": "resize_extra_window -1",
+    "25-259": "resize_popup_window +1",
+    "25-258": "resize_popup_window -1",
 }
 
 

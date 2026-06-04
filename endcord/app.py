@@ -3924,7 +3924,7 @@ class Endcord:
             else:
                 self.update_extra_line("Extension search failed")
 
-        elif cmd_type == 74:   # RESIZE_EXTRA_WINDOW
+        elif cmd_type == 74:   # RESIZE_POPUP_WINDOW
             self.tui.set_extra_height(cmd_args["value"])
 
         elif cmd_type == 75 and self.active_channel["channel_id"]:   # DUMP_ROLES

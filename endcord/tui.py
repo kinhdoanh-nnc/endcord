@@ -330,6 +330,7 @@ class TUI():
         self.hline = config["tree_drop_down_hline"]
         self.tab_spaces = int(config["tab_spaces"])
         self.vim_mode = config["vim_mode"]
+        self.swap_assist = config["assist_swap_binding"]
 
         # select bordered method
         if self.bordered:
@@ -2281,20 +2282,26 @@ class TUI():
             self.add_to_delta_store("BACKSPACE", letter)
 
 
-    def common_keybindings(self, key, mouse=False, switch=False, command=False, forum=False):
+    def common_keybindings(self, key, mouse=False, switch=False, command=False, forum=False, alt=False):
         """Handle keybinding events that can be executed by mouse events"""
-        if key in self.KEYBINDINGS_CHAT_UP:
-            if command:
+        if key in self.KEYBINDINGS_CHAT_UP or (self.swap_assist and self.win_extra_window and key in self.keybindings["extra_up"] and not alt):
+            if command and key not in self.keybindings["extra_up"]:
                 return 46
+            if self.swap_assist and self.win_extra_window and not mouse and key in self.KEYBINDINGS_CHAT_UP:
+                self.common_keybindings(self.keybindings["extra_up"][0], alt=True)
+                return None
             if self.chat_selected + 1 < len(self.chat_buffer):
                 top_line = self.chat_index + self.chat_hw[0] - 3
                 if top_line + 3 < len(self.chat_buffer) and self.chat_selected >= top_line:
                     self.chat_index += 1   # move history down
                 self.set_selected(self.chat_selected + 1, scroll=False)   # move selection up
 
-        if key in self.KEYBINDINGS_CHAT_DOWN:
-            if command:
+        if key in self.KEYBINDINGS_CHAT_DOWN or (self.swap_assist and self.win_extra_window and key in self.keybindings["extra_down"] and not alt):
+            if command and key not in self.keybindings["extra_up"]:
                 return 47
+            if self.swap_assist and self.win_extra_window and not mouse and key in self.KEYBINDINGS_CHAT_DOWN:
+                self.common_keybindings(self.keybindings["extra_down"][0], alt=True)
+                return None
             if self.chat_selected >= self.dont_hide_chat_selection:   # if it is -1, selection is hidden
                 if self.chat_index and self.chat_selected <= self.chat_index + 2:   # +2 from status and input lines
                     self.chat_index -= 1   # move history up
