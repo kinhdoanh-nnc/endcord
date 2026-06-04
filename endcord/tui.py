@@ -627,7 +627,7 @@ class TUI():
             self.draw_title_tree()
         self.draw_extra_line(self.extra_line_text)
         self.draw_extra_window(self.extra_window_title, self.extra_window_body, select=self.extra_select, reset_scroll=False)
-        self.draw_member_list(self.member_list, self.member_list_format, force=True, clean=not(redraw_only))
+        self.draw_member_list(self.member_list, self.member_list_format, force=True)
         self.draw_chat()
 
 
@@ -700,7 +700,7 @@ class TUI():
             y, x = extra_window_hwyx[2], extra_window_hwyx[3]
             self.screen.addstr(y, x - 1, self.corner_ul, curses.color_pair(self.default_color))
             self.screen.addstr(y, x + extra_window_hwyx[1], self.corner_ur, curses.color_pair(self.default_color))
-        self.draw_member_list(self.member_list, self.member_list_format, force=True, clean=not(redraw_only))
+        self.draw_member_list(self.member_list, self.member_list_format, force=True)
         self.draw_chat()
         self.screen.noutrefresh()
         self.need_update.set()
@@ -1839,7 +1839,7 @@ class TUI():
             self.execute_extensions_methods("on_extra_window_remove")
 
 
-    def draw_member_list(self, member_list, member_list_format, force=False, reset=False, clean=True):
+    def draw_member_list(self, member_list, member_list_format, force=False, reset=False):
         """Draw member list and resize chat"""
         if self.disable_drawing:
             return
@@ -1895,20 +1895,7 @@ class TUI():
                     if num == self.mlist_selected:
                         self.win_member_list.insstr(y, 0, line, curses.color_pair(4) | self.attrib_map[4])
                     else:
-                        for pos, character in enumerate(line):
-                            if pos > w:
-                                break
-                            for format_part in line_format:
-                                if format_part[1] <= pos < format_part[2]:
-                                    color = format_part[0]
-                                    if color > 255:   # set all colors after 255 to default color
-                                        color = self.default_color
-                                    color_ready = curses.color_pair(color) | self.attrib_map[color]
-                                    safe_insch(self.win_member_list, y, pos, character, color_ready)
-                                    break
-                            else:
-                                safe_insch(self.win_member_list, y, pos, character, curses.color_pair(self.default_color) | self.attrib_map[self.default_color])
-
+                        draw_formatted_line(self.win_member_list, y, 0, line, line_format, self.default_color, self.attrib_map, self.lock)
                 y += 1
                 while y < h:
                     # curses optimizes scrolling, so large empty sace will cause flickering when scrolling tree

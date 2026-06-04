@@ -3120,21 +3120,21 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
 
             # get status color
             if member["status"] == "dnd":
-                this_format.append([20, 0, 2])
+                this_format.append([20, None, 0, 2])
             elif member["status"] == "idle":
-                this_format.append([19, 0, 2])
+                this_format.append([19, None, 0, 2])
             elif member["status"] == "offline":
                 text = f"  {global_name}"
                 # this_format.append([])
             else:   # online
-                this_format.append([18, 0, 2])
+                this_format.append([18, None, 0, 2])
 
             # get role color
             member_roles = member["roles"]
             for role in guild_roles:
                 if role["id"] in member_roles:
                     if role.get("color_id"):
-                        this_format.append([role["color_id"], 2, width])
+                        this_format.append([role["color_id"], None, 2, width])
                     break
 
         else:   # user group
