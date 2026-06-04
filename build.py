@@ -592,8 +592,8 @@ def build_with_pyinstaller(onedir, nosoundcard, print_cmd=False):
     # cleanup
     fprint("Cleaning up")
     try:
-        shutil.rmtree("build")
         os.remove(f"{pkgname}.spec")
+        shutil.rmtree("build")
     except FileNotFoundError:
         pass
     fprint(f"Finished building {pkgname}")

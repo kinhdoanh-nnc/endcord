@@ -153,26 +153,21 @@ def draw_formatted_line(window, y, x, text, text_format, default_color, attrib_m
         if not text_format:
             window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
             return
-        pos = 0
         try:
-            for pos, character in enumerate(text):
-                for format_part in text_format:
-                    if format_part[2] <= pos < format_part[3]:
-                        if format_part[1] == 1:
-                            attrib = curses.A_BOLD
-                        elif format_part[1] == 2:
-                            attrib = curses.A_ITALIC
-                        elif format_part[1] == 3:
-                            attrib = curses.A_UNDERLINE
-                        else:
-                            attrib = attrib_map[default_color]
-                        color = format_part[0]
-                        if color is None:
-                            color = default_color
-                        safe_insch(window, y, x + pos, character, curses.color_pair(color) | attrib)
-                        break
+            window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
+            for format_part in text_format:
+                if format_part[1] == 1:
+                    attrib = curses.A_BOLD
+                elif format_part[1] == 2:
+                    attrib = curses.A_ITALIC
+                elif format_part[1] == 3:
+                    attrib = curses.A_UNDERLINE
                 else:
-                    safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib_map[default_color])
+                    attrib = attrib_map[default_color]
+                color = format_part[0]
+                if color is None:
+                    color = default_color
+                window.chgat(y, x + format_part[2], format_part[3] - format_part[2], curses.color_pair(color) | attrib)
         except curses.error:
             # exception will happen when window is resized to smaller w dimensions
             pass   # some other draw function will call self.resize()
@@ -187,25 +182,20 @@ def draw_attributed_line(window, y, x, text, text_format, default_color, skip_at
         if not text_format:
             window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
             return
-        pos = 0
         try:
-            for pos, character in enumerate(text):
-                for format_part in text_format:
-                    if format_part[1] <= pos < format_part[2]:
-                        if format_part[0] == 1:
-                            attrib = curses.A_BOLD
-                        elif format_part[0] == 2:
-                            attrib = curses.A_ITALIC
-                        elif format_part[0] == 3:
-                            attrib = curses.A_UNDERLINE
-                        elif skip_attrib:
-                            attrib = 0
-                        else:
-                            attrib = attrib_map[default_color]
-                        safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib)
-                        break
+            window.insstr(y, x, text, curses.color_pair(default_color) | attrib_map[default_color])
+            for format_part in text_format:
+                if format_part[0] == 1:
+                    attrib = curses.A_BOLD
+                elif format_part[0] == 2:
+                    attrib = curses.A_ITALIC
+                elif format_part[0] == 3:
+                    attrib = curses.A_UNDERLINE
+                elif skip_attrib:
+                    attrib = 0
                 else:
-                    safe_insch(window, y, x + pos, character, curses.color_pair(default_color) | attrib_map[default_color])
+                    attrib = attrib_map[default_color]
+                window.chgat(y, x + format_part[1], format_part[2] - format_part[1], curses.color_pair(default_color) | attrib)
         except curses.error:
             # exception will happen when window is resized to smaller w dimensions
             pass   # some other draw function will call self.resize()
@@ -233,27 +223,22 @@ def draw_chat(win_chat, h, w, chat_buffer, chat_format, chat_index, chat_selecte
             default_color_id = line_format[0][0]
             # filled with spaces so background is drawn all the way
             default_color = curses.color_pair(default_color_id) | attrib_map[default_color_id]
-            win_chat.insstr(y, 0, " " * w + "\n", curses.color_pair(default_color_id))
-
-            for pos in range(min(len(line), w)):
-                character = line[pos]
-                for format_part in line_format[1:]:
-                    color = format_part[0]
-                    start = format_part[1]
-                    end = format_part[2]
-                    if start <= pos < end:
-                        # assuming never to have id > 65536, if value is that large its definitely attribute
-                        if color >= 0x00010000:
-                            # using base color because it is in message content anyway
-                            color_ready = curses.color_pair(default_color_id) | color
-                        else:
-                            if color > 255:   # set all colors after 255 to default color
-                                color = color_default
-                            color_ready = curses.color_pair(color) | attrib_map[color]
-                        safe_insch(win_chat, y, pos, character, color_ready)
-                        break
+            win_chat.insstr(y, 0, (line[:w]).ljust(w) + "\n", default_color)
+            for format_part in line_format[1:]:
+                color = format_part[0]
+                start = format_part[1]
+                end = min(format_part[2], w)
+                if start >= end:
+                    continue
+                # assuming never to have id > 65536, if value is that large its definitely attribute
+                if color >= 0x00010000:
+                    # using base color because it is in message content anyway
+                    color_ready = curses.color_pair(default_color_id) | color
                 else:
-                    safe_insch(win_chat, y, pos, character, default_color)
+                    if color > 255:   # set all colors after 255 to default color
+                        color = color_default
+                    color_ready = curses.color_pair(color) | attrib_map[color]
+                win_chat.chgat(y, start, end - start, color_ready)
 
     # fill empty lines with spaces so background is drawn all the way
     y -= 1
@@ -379,7 +364,6 @@ class TUI():
         self.title_tree_txt = ""
         self.chat_buffer = []
         self.chat_format = []
-        self.wide_map = []
         self.tree = []
         self.tree_format = []
         self.tree_clean_len = 0
@@ -1501,33 +1485,6 @@ class TUI():
             self.need_update.set()
 
 
-    def set_wide(self, chat_map):
-        """Update wide characters map"""
-        self.wide_map = []
-        for num, line in enumerate(chat_map):
-            if line and line[6]:
-                self.wide_map.append(num + 1)
-
-
-    def clear_chat_wide(self, wait=True):
-        """Clear specific chat lines that are containing emoji"""
-        if self.disable_drawing or not self.wide_map:
-            return
-        with self.lock:
-            h, w = self.win_chat.getmaxyx()
-            for y in self.wide_map:
-                chat_y = y - self.chat_index
-                if chat_y <= 0:
-                    continue
-                if chat_y > h:
-                    break
-                self.win_chat.insstr(h - chat_y, 0, " " * w, curses.color_pair(1))
-            self.win_chat.noutrefresh()
-            self.need_update.set()
-        if wait:
-            time.sleep(self.screen_update_delay/2)
-
-
     def draw_tree(self):
         """Draw channel tree"""
         if self.tree_width < 10:
@@ -1905,8 +1862,6 @@ class TUI():
                     if not force and self.win_member_list:
                         self.mlist_selected = -1
                         self.mlist_index = 0
-                    if clean:
-                        self.clear_chat_wide(wait=False)
                     common_h = self.init_chat()
                     # self.draw_chat()   # chat will be regenerated and resized in app main loop
 
@@ -1986,7 +1941,6 @@ class TUI():
                 time.sleep(self.screen_update_delay/2)
 
             # remove member list and redraw chat
-            self.clear_chat_wide()
             with self.lock:
                 del (self.win_member_list, self.win_chat)
                 self.member_list = []
@@ -3138,7 +3092,7 @@ class TUI():
             self.set_input_index(input_index)
             self.draw_input_line()
 
-        elif self.win_extra_window and self.mouse_in_window(x, y, self.win_extra_window):
+        elif self.win_extra_window and self.mouse_in_window(x, y, self.win_extra_window) and self.extra_select:
             x, y = self.mouse_rel_pos(x, y, self.win_extra_window)
             if y == 0:
                 self.drag_extra_window()

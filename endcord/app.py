@@ -2209,27 +2209,27 @@ class Endcord:
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 5
                                         clicked_id = item[2]
-                            elif ranges[2]:   # custom emoji
+                            if ranges[2]:   # custom emoji
                                 for num, item in enumerate(ranges[2]):
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 7
                                         clicked_id = item[2]
-                            elif ranges[3]:   # mention
+                            if ranges[3]:   # mention
                                 for num, item in enumerate(ranges[3]):
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 8
                                         clicked_id = item[2]
-                            elif ranges[4]:   # channel
+                            if ranges[4]:   # channel
                                 for num, item in enumerate(ranges[4]):
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 9
                                         clicked_id = item[2]
-                            elif ranges[5]:   # embed images
+                            if ranges[5]:   # embed images
                                 item = ranges[5]
                                 if item[0] <= mouse_x < item[1] + item[0]:
                                     clicked_type = 10
                                     clicked_id = item[2]
-                            if ranges[1]:   # spoiler (owerwries previous)
+                            if ranges[1]:   # spoiler (owerwries all previous)
                                 for num, item in enumerate(ranges[1]):
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 6
@@ -6106,7 +6106,6 @@ class Endcord:
             change_id=change_id,
             change_type=change_type,
         )
-        self.tui.set_wide(self.chat_map)
 
         if keep_selected:
             selected_msg = selected_msg + change_amount
@@ -6166,7 +6165,6 @@ class Endcord:
             self.config,
         )
         self.chat_map = [None] * len(self.forum_old)
-        self.tui.set_wide([])
 
 
     def update_member_list(self, last_index=None, reset=False):
@@ -7006,11 +7004,6 @@ class Endcord:
                         for element in MESSAGE_UPDATE_ELEMENTS:
                             loaded_message[element] = data[element]
                             loaded_message["spoiled"] = []
-                        # check if this message has emoji and clear it before redraw
-                        msg_line_index = self.msg_to_lines(num, smart=True)
-                        if msg_line_index in self.tui.wide_map:
-                            self.tui.wide_map = [msg_line_index]
-                            self.tui.clear_chat_wide()
                         self.update_chat(scroll=False, change_id=data["id"], change_type=3)
                     elif op == "MESSAGE_DELETE":
                         if self.keep_deleted:
@@ -8326,10 +8319,6 @@ class Endcord:
                         self.update_forum()
                         self.tui.update_chat(self.chat, self.chat_format)
                     else:
-                        if abs(self.chat_dim[1] - new_chat_dim[1]) - 1 != self.member_list_width and self.state["member_list"]:   # skip member list changes
-                            self.toggle_member_list(quick=True)   # hide and show to fix emoji mess
-                            self.tui.clear_chat_wide()
-                            self.toggle_member_list(quick=True)
                         self.chat_dim = new_chat_dim
                         self.update_chat(scroll=False)
                 if self.most_recent_incoming_call or self.active_channel["channel_id"] in self.incoming_calls:

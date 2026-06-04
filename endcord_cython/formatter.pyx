@@ -1,29 +1,43 @@
 # cython: boundscheck=False, wraparound=False, freethreading_compatible=True
 
-cdef inline int binary_search(int codepoint, tuple ranges):
-    cdef Py_ssize_t low = 0
-    cdef Py_ssize_t high = len(ranges) - 1
-    cdef Py_ssize_t mid
-    cdef int start, end
+from libc.stdlib cimport malloc
 
-    if codepoint < ranges[0][0] or codepoint > ranges[high][1]:
-        return 0
+cdef Py_ssize_t wide_count
+cdef int* wide_starts
+cdef int* wide_ends
+
+cpdef void init_wide_ranges(tuple ranges):
+    cdef Py_ssize_t i
+    global wide_count, wide_starts, wide_ends
+    wide_count = len(ranges)
+    wide_starts = <int*>malloc(wide_count * sizeof(int))
+    wide_ends   = <int*>malloc(wide_count * sizeof(int))
+    for i in range(wide_count):
+        wide_starts[i] = ranges[i][0]
+        wide_ends[i] = ranges[i][1]
+
+
+cdef inline bint binary_search(int codepoint) noexcept:
+    cdef Py_ssize_t low = 0
+    cdef Py_ssize_t high = wide_count - 1
+    cdef Py_ssize_t mid
+
+    if codepoint < wide_starts[0]:
+        return False
+    if codepoint > wide_ends[high]:
+        return False
 
     while low <= high:
         mid = (low + high) >> 1
-        start, end = ranges[mid]
-
-        if codepoint > end:
-            low = mid + 1
-        elif codepoint < start:
+        if codepoint < wide_starts[mid]:
             high = mid - 1
         else:
-            return 1
+            low = mid + 1
 
-    return 0
+    return high >= 0 and codepoint <= wide_ends[high]
 
 
-cpdef limit_width_wch(str text, int max_width, tuple ranges):
+cpdef limit_width_wch(str text, int max_width):
     cdef int total_width = 0
     cdef int character, char_width
     cdef Py_ssize_t i, n = len(text)
@@ -33,7 +47,7 @@ cpdef limit_width_wch(str text, int max_width, tuple ranges):
         if 0x20 <= character < 0x7f:
             char_width = 1
         else:
-            char_width = 1 + binary_search(character, ranges)
+            char_width = 1 + binary_search(character)
         if total_width + char_width > max_width:
             return text[:i], total_width
         total_width += char_width
@@ -41,7 +55,7 @@ cpdef limit_width_wch(str text, int max_width, tuple ranges):
     return text, total_width
 
 
-cpdef len_wch(str text, tuple ranges):
+cpdef len_wch(str text):
     cdef int total_width = 0
     cdef int character
     cdef Py_ssize_t i, n = len(text)
@@ -51,12 +65,12 @@ cpdef len_wch(str text, tuple ranges):
         if 0x20 <= character < 0x7f:
             total_width += 1
         else:
-            total_width += 1 + binary_search(character, ranges)
+            total_width += 1 + binary_search(character)
 
     return total_width
 
 
-cpdef Py_ssize_t split_index_wch(str text, int max_width, tuple ranges):
+cpdef Py_ssize_t split_index_wch(str text, int max_width):
     cdef int width = 0
     cdef int character
     cdef Py_ssize_t i, n = len(text)
@@ -67,9 +81,80 @@ cpdef Py_ssize_t split_index_wch(str text, int max_width, tuple ranges):
         if 0x20 <= character < 0x7f:
             w = 1
         else:
-            w = 1 + binary_search(character, ranges)
+            w = 1 + binary_search(character)
         if width + w > max_width:
             return i
         width += w
 
     return n
+
+
+cdef inline Py_ssize_t bisect_left_c(list arr, Py_ssize_t x):
+    # custom bisect_left to avoid python binding call
+    cdef Py_ssize_t low = 0
+    cdef Py_ssize_t high = len(arr)
+    cdef Py_ssize_t mid
+
+    while low < high:
+        mid = (low + high) >> 1
+        if <Py_ssize_t>arr[mid] < x:
+            low = mid + 1
+        else:
+            high = mid
+
+    return low
+
+
+cpdef list fix_line_format(list line_format, str text):
+    cdef list wide_positions, corrected
+    cdef Py_ssize_t i, pos
+    cdef Py_ssize_t start, end, start_shift, end_shift
+    cdef int color, character
+    cdef object ch
+
+    if len(line_format) <= 1:
+        return line_format
+
+    wide_positions = []
+    for i, ch in enumerate(text):
+        character = ord(ch)
+        if (character < 0x20 or character >= 0x7f) and binary_search(character):
+            wide_positions.append(i)
+    if not wide_positions:
+        return line_format
+
+    corrected = [line_format[0]]
+    for color, start, end in line_format[1:]:
+        start_shift = bisect_left_c(wide_positions, start)
+        end_shift = bisect_left_c(wide_positions, end)
+        corrected.append([color, start + start_shift, end + end_shift])
+
+    return corrected
+
+
+cpdef list fix_map_ranges(list map_ranges, str text):
+    cdef list wide_positions, corrected
+    cdef Py_ssize_t i, pos
+    cdef Py_ssize_t start, end, start_shift, end_shift
+    cdef int character
+    cdef object ch
+    cdef object data
+
+    if not map_ranges:
+        return map_ranges
+
+    wide_positions = []
+    for i, ch in enumerate(text):
+        character = ord(ch)
+        if (character < 0x20 or character >= 0x7f) and binary_search(character):
+            wide_positions.append(i)
+    if not wide_positions:
+        return map_ranges
+
+    corrected = []
+    for start, end, data in map_ranges:
+        start_shift = bisect_left_c(wide_positions, start)
+        end_shift = bisect_left_c(wide_positions, end)
+        corrected.append([start + start_shift, end + end_shift, data])
+
+    return corrected
