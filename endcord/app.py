@@ -177,20 +177,19 @@ class Endcord:
         self.default_msg_color = self.colors_formatted[0][0][:]
         self.default_msg_alt_color = self.colors[1]
 
-        # write properties to log
-        properties = [utils.detect_runtime()]
-        if support_media:
-            properties.append("ASCII media")
+        # write build info to log
+        buildinfo = [utils.detect_runtime()]
         if cythonized:
-            properties.append("cythonized")
+            buildinfo.append("cythonized")
         if uses_pgcurses:
-            properties.append("windowed")
-        if shutil.which(self.config["mpv_path"]):
-            properties.append("have mpv")
-        if shutil.which(self.config["yt_dlp_path"]):
-            properties.append("have yt-dlp")
-        logger.info("Properties: " + ", ".join(properties))
-        del (properties)
+            buildinfo.append("windowed")
+        if support_media:
+            buildinfo.append("media support")
+        if support_call:
+            buildinfo.append("call support")
+        custom_build = " (CUSTOM BUILD)" if importlib.util.find_spec("_bz2") is None else ""
+        logger.info(f"Build info:\n  Python {sys.version} on {sys.platform}{custom_build}\n  Features: {", ".join(buildinfo)}")
+        del (buildinfo, custom_build)
 
         # variables
         self.run = False
@@ -1671,12 +1670,12 @@ class Endcord:
                 msg_index = self.lines_to_msg(chat_sel)
                 if msg_index is None:
                     continue
-                embeds = []
-                for embed in self.messages[msg_index]["embeds"]:
-                    if embed["url"]:
-                        embeds.append(embed["url"])
+                urls = None
+                embeds = self.get_stuff_from_selected_line(chat_sel, 5)
+                if not embeds:
+                    embeds = self.get_msg_embeds(msg_index)
+                    urls = self.get_msg_urls_chat(msg_index)
                 selected_urls = []
-                urls = self.get_msg_urls_chat(msg_index)
                 for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url
                     if urls[num] in embeds:
                         selected_urls.append(urls[num])
@@ -1700,10 +1699,13 @@ class Endcord:
                 msg_index = self.lines_to_msg(chat_sel)
                 if msg_index is None:
                     continue
-                selected_urls = []
-                urls = self.get_msg_urls_chat(msg_index)
-                for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url
-                    selected_urls.append(urls[num])
+                urls = None
+                embeds = self.get_stuff_from_selected_line(chat_sel, 5)
+                if not embeds:
+                    selected_urls = []
+                    urls = self.get_msg_urls_chat(msg_index)
+                    for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url
+                        selected_urls.append(urls[num])
                 if len(selected_urls) == 1:
                     selected_url = self.refresh_attachment_url(selected_urls[0])
                     webbrowser.open(selected_url, new=0, autoraise=True)
@@ -1726,9 +1728,12 @@ class Endcord:
                 msg_index = self.lines_to_msg(chat_sel)
                 if msg_index is None:
                     continue
-                embeds = self.get_msg_embeds(msg_index)
+                urls = None
+                embeds = self.get_stuff_from_selected_line(chat_sel, 5)
+                if not embeds:
+                    embeds = self.get_msg_embeds(msg_index)
+                    urls = self.get_msg_urls_chat(msg_index)
                 selected_urls = []
-                urls = self.get_msg_urls_chat(msg_index)
                 if urls:
                     for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url
                         if urls[num] in embeds:
@@ -2907,12 +2912,14 @@ class Endcord:
             for embed in self.messages[msg_index]["embeds"]:
                 if embed["url"]:
                     embeds.append(embed["url"])
-            selected_urls = []
             urls = self.get_msg_urls_chat(msg_index)
             if urls:
+                selected_urls = []
                 for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url on this line
                     if urls[num] in embeds:
                         selected_urls.append(urls[num])
+                if not selected_urls:
+                    selected_urls = self.get_stuff_from_selected_line(chat_sel, 5)
                 if len(selected_urls) == 1 or select_num:
                     select_num = max(min(select_num-1, len(selected_urls)-1), 0)
                     self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(
@@ -2939,11 +2946,13 @@ class Endcord:
             if msg_index is None:
                 return
             select_num = cmd_args.get("num", 0)
-            selected_urls = []
             urls = self.get_msg_urls_chat(msg_index)
             if urls:
+                selected_urls = []
                 for num in self.get_stuff_from_selected_line(chat_sel, 0):   # get url
                     selected_urls.append(urls[num])
+                if not selected_urls:
+                    selected_urls = self.get_stuff_from_selected_line(chat_sel, 5)
                 if len(selected_urls) == 1 or select_num:
                     select_num = max(min(select_num-1, len(selected_urls)-1), 0)
                     selected_url = self.refresh_attachment_url(selected_urls[select_num])
@@ -4380,13 +4389,19 @@ class Endcord:
     def get_stuff_from_selected_line(self, chat_sel, thing):
         """
         Get selected stuff indexes in message from selected line in chat.
-        Stuff can be: 0 - url, 1 - spoiler, 2 - custom emoji, 3 - mention, 4 - channel
+        Stuff can be: 0 - url, 1 - spoiler, 2 - custom emoji, 3 - mention, 4 - channel, 5 - inline image embed url
         """
         chat_line_map = self.chat_map[chat_sel]
         if not chat_line_map or not chat_line_map[5]:
             return []
         line_stuff = []
-        if chat_line_map[5]:
+        if not chat_line_map[5][thing]:
+            return []
+        if thing == 5 and chat_line_map[5][5]:
+            msg_index = chat_line_map[0]
+            embed = self.messages[msg_index]["embeds"][chat_line_map[5][5][2]]
+            line_stuff = [embed["main_url"] if not embed["url"].startswith("https://") else embed["url"]]
+        else:
             for item in chat_line_map[5][thing]:
                 line_stuff.append(item[2])
         return line_stuff
@@ -4453,7 +4468,6 @@ class Endcord:
                     urls.append(embed["main_url"])
                 else:
                     urls.append(embed["url"])
-
         if stickers:
             for sticker in self.messages[msg_index]["stickers"]:
                 sticker_url = discord.get_sticker_url(sticker)

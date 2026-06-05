@@ -466,28 +466,51 @@ def build_numpy_lite(clang):
         "import numpy; print(int(numpy.__config__.show_config('dicts')['Build Dependencies']['blas'].get('found', False)))",
     ]
     fprint("Building numpy lite (no openblas)")
-    if int(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()):
-        if clang:
-            os.environ["CC"] = "clang"
-            os.environ["CXX"] = "clang++"
-        subprocess.run(["uv", "pip", "install", "pip"], check=True)   # because uv wont work with --config-settings as intended
-        try:
-            if sys.platform == "win32":
-                python_interpreter = r".venv\Scripts\python.exe"
-            else:
-                python_interpreter = ".venv/bin/python"
-            subprocess.run([python_interpreter, "-m", "pip", "uninstall", "--yes", "numpy"], check=True)
-            subprocess.run([
-                python_interpreter, "-m", "pip", "install", "--no-cache-dir", "--no-binary=:all:", "numpy",
-                "--config-settings=setup-args=-Dblas=None",
-                "--config-settings=setup-args=-Dlapack=None",
-            ], check=True)
-        except subprocess.CalledProcessError:   # fallback
-            print("Failed building numpy lite (no openblas), faling back to default numpy")
-            subprocess.run(["uv", "pip", "install", "numpy"], check=True)
-        subprocess.run(["uv", "pip", "uninstall", "pip"], check=True)
-    else:
+    if not int(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()):
         print("Numpy lite (no openblas) is already built")
+        return
+    if clang:
+        os.environ["CC"] = "clang"
+        os.environ["CXX"] = "clang++"
+        cflags = [
+            "-DNDEBUG",
+            "-g0",
+            "-O3",
+            "-march=x86-64",
+            "-mtune=generic",
+            "-fno-semantic-interposition",
+            "-fno-strict-overflow",
+            "-fvisibility=hidden",
+        ]
+        ldflags = [
+            "-Wl,-s",
+            "-Wl,-O1",
+            "-Wl,--sort-common",
+            "-Wl,--as-needed",
+            "-Wl,-z,pack-relative-relocs",
+            "-Wl,--exclude-libs,ALL",
+        ]
+        if shutil.which("lld") and clang:
+            ldflags.append("-fuse-ld=lld")
+        os.environ["CFLAGS"] = " ".join(cflags)
+        os.environ["CXXFLAGS"] = " ".join(cflags)
+        os.environ["LDFLAGS"] = " ".join(ldflags)
+    subprocess.run(["uv", "pip", "install", "pip"], check=True)   # because uv wont work with --config-settings as intended
+    try:
+        if sys.platform == "win32":
+            python_interpreter = r".venv\Scripts\python.exe"
+        else:
+            python_interpreter = ".venv/bin/python"
+        subprocess.run([python_interpreter, "-m", "pip", "uninstall", "--yes", "numpy"], check=True)
+        subprocess.run([
+            python_interpreter, "-m", "pip", "install", "--no-cache-dir", "--no-binary=:all:", "numpy",
+            "--config-settings=setup-args=-Dblas=None",
+            "--config-settings=setup-args=-Dlapack=None",
+        ], check=True)
+    except subprocess.CalledProcessError:   # fallback
+        print("Failed building numpy lite (no openblas), faling back to default numpy")
+        subprocess.run(["uv", "pip", "install", "numpy"], check=True)
+    subprocess.run(["uv", "pip", "uninstall", "pip"], check=True)
 
 
 def build_cython(clang, mingw):
@@ -634,14 +657,38 @@ def build_with_nuitka(onedir, clang, mingw, nosoundcard, print_cmd=False, experi
         "--nofollow-import-to=google._upb",
     ]
     package_data = ["--include-package-data=soundcard"]
-    add_data = [f"--include-data-files={emoji_path}=."]
+    add_data = [f"--include-data-files={emoji_path}=emoji.json"]
+
+    # compiler flags
+    cflags = [
+        "-DNDEBUG",
+        "-g0",
+        "-O3",
+        "-march=x86-64",
+        "-mtune=generic",
+        "-fno-semantic-interposition",
+        "-fno-strict-overflow",
+        "-fvisibility=hidden",
+        # "-flto=thin",
+    ]
+    ldflags = [
+        "-Wl,-s",
+        "-Wl,-O1",
+        "-Wl,--sort-common",
+        "-Wl,--as-needed",
+        "-Wl,-z,pack-relative-relocs",
+        "-Wl,--exclude-libs,ALL",
+        # "-flto=thin",
+    ]
+    if shutil.which("lld") and clang:
+        ldflags.append("-fuse-ld=lld")
+    os.environ["CFLAGS"] = " ".join(cflags)
+    os.environ["LDFLAGS"] = " ".join(ldflags)
 
     # options
     if nosoundcard:
         exclude_imports.append("--nofollow-import-to=soundcard")
         package_data.remove("--include-package-data=soundcard")
-    if clang:
-        os.environ["CFLAGS"] = "-Wno-macro-redefined"
     if full:
         hidden_imports += ["--include-module=av.sidedata.encparams"]
 
@@ -678,6 +725,7 @@ def build_with_nuitka(onedir, clang, mingw, nosoundcard, print_cmd=False, experi
         *package_data,
         *add_data,
         *options,
+        "--prefer-source-code",
         "--remove-output",
         "--output-dir=dist",
         f"--output-filename={pkgname}",

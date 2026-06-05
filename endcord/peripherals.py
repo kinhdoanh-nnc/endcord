@@ -336,7 +336,8 @@ def copy_file_to_clipboard(path):
 
 def paste_clipboard_files(save_path=None):
     """Get files paths from clipboard, linux only, needs xclip or wl-clipboard"""
-    save_path = os.path.expanduser(save_path)
+    if save_path:
+        save_path = os.path.expanduser(save_path)
     if sys.platform == "linux":
 
         if os.getenv("WAYLAND_DISPLAY"):

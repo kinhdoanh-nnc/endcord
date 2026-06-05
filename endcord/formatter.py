@@ -1565,7 +1565,7 @@ class ChatGenerator:
                 if self.dynamic_name_len:
                     chat_format.append(fix_line_format(shift_formats(self.color_mention_reply, self.pre_name_len_reply, name_len - self.limit_username), reply_line))
                 else:
-                    chat_format.append(fix_line_format(self.color_mention_reply), reply_line)
+                    chat_format.append(fix_line_format(self.color_mention_reply, reply_line))
             elif self.dynamic_name_len:
                 chat_format.append(fix_line_format(shift_formats(self.color_reply, self.pre_name_len_reply, name_len - self.limit_username), reply_line))
             else:

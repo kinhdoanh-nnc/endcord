@@ -5,16 +5,23 @@ from Cython.Build import cythonize
 from setuptools import Extension, setup
 
 extra_compile_args = [
-    "-flto=auto",
+    "-flto=thin",
+    "-g0",
     "-O3",
     "-ffast-math",
     "-fomit-frame-pointer",
     "-funroll-loops",
+    "-fvisibility=hidden",
+    "-DNDEBUG",
 ]
 extra_link_args = [
-    "-flto",
-    "-O3",
-    "-s",
+    "-flto=thin",
+    "-Wl,-O3",
+    "-Wl,-s",
+    "-Wl,--sort-common",
+    "-Wl,-z,pack-relative-relocs",
+    "-Wl,--as-needed",
+    "-Wl,--exclude-libs,ALL",
 ]
 
 if shutil.which("lld") and os.environ.get("CC") == "clang":

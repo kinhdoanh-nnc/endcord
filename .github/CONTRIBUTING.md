@@ -262,4 +262,5 @@ uv run python setup.py build_ext --inplace
 
 6. Get and run build command
 - Build commands can be obtained by running `python build.py --print-cmd`, adding other arguments will change the printed command.  
+- The script will also set custom `CFLAGS` and `LDFLAGS` env variables, so check them out.  
 - Recommended: `python build.py --print-cmd --nuitka --clang`.  
