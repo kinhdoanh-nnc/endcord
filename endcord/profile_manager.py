@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import curses
 import json
@@ -681,7 +680,7 @@ def manage_profile(screen, have_keyring, config, editing_profile=None):
                     break
 
         elif step == 300:   # qr code login
-            from endcord import auth, client_properties, terminal_qr, terminal_utils
+            from endcord import auth, client_properties, qr_code, terminal_utils
             discord_auth = init_auth(config)
             if config["custom_user_agent"]:
                 user_agent = config["custom_user_agent"]
@@ -760,7 +759,7 @@ def manage_profile(screen, have_keyring, config, editing_profile=None):
                 if drawing:
                     text_above = "Scan this QR code with your phone to login:"
                     text_bellow = url + "\n\n" + timeout_text + "\nEsc to go back."
-                    _, string = terminal_qr.gen_qr_terminal_string(url, text_above, text_bellow)
+                    _, string = qr_code.gen_qr_terminal_string(url, text_above, text_bellow)
                     terminal_utils.draw(string)
                 time.sleep(0.1)
             terminal_utils.stop_esc_detector()

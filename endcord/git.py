@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import json
 import logging
@@ -53,6 +52,8 @@ def install_extension(url, cli=False, prefer_tag=None, update=False, proxy=None)
                 return 4, "Error occured. See log for more info"
             if status == 3:
                 return 3, "Could not find this extension"
+            if status == 4:
+                return 4, "Error occured. See log for more info"
             return None, ""
 
         # pull/clone with git command
@@ -193,8 +194,8 @@ def download_gh_repo(owner, repo, save_path, tag=None, proxy=None):
         if response.status in (301, 302, 303, 307, 308):
             location = response.getheader("Location")
             if not location:
-                print("Error: Redirect without lcation")
-                return []
+                logger.error("Redirect without lcation")
+                return 4
             redirects += 1
             connection.close()
             parsed = urllib.parse.urlparse(location)

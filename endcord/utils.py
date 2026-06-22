@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import base64
 import glob
@@ -116,6 +115,21 @@ def detect_runtime():
     if getattr(sys, "frozen", False):
         return "unknown"
     return "source"
+
+
+def get_build_info(cythonized, uses_pgcurses, support_media, support_call):
+    """Write build info string"""
+    build_info = [detect_runtime()]
+    if cythonized:
+        build_info.append("cythonized")
+    if uses_pgcurses:
+        build_info.append("windowed")
+    if support_media:
+        build_info.append("media support")
+    if support_call:
+        build_info.append("call support")
+    custom_build = " (CUSTOM BUILD)" if importlib.util.find_spec("_bz2") is None else ""
+    return f"Python {sys.version}{custom_build} on {sys.platform}\n  Features: {", ".join(build_info)}"
 
 
 def remove_args(cmd, *args):

@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import curses
 import importlib.util
@@ -29,9 +28,13 @@ TIME_DIVS = [1, 60, 3600, 86400, 2678400, 31190400]
 TIME_UNITS = ["second", "minute", "hour", "day", "month", "year"]
 SPLIT_AFTER_TIME = 10 * 60
 ALT_SPACE = "⠀"   # U+2800 - braille pattern blank
+MIN_TAB_LEN = 8
 
-match_emoji = re.compile(r"(?<!\\):[^:\s]+:")
-match_d_emoji = re.compile(r"<(a?):([a-zA-Z0-9_]+):(\d+)>")
+ACTIVITY_VERBS = ("Playing", "Streaming", "Listening to", "Watching", "Competing in")
+ACTIVITY_ICONS = ("🎮︎", "📺︎", "♪", "📺︎", "🎮︎")
+LOG_LELVELS = ("INFO", "DEBUG", "WARNING", "ERROR", "FATAL")
+
+match_d_emoji = re.compile(r"<(a?):(.+):(\d+)>")
 match_mention = re.compile(r"<@(\d+)>")
 match_role = re.compile(r"<@&(\d+)>")
 match_channel = re.compile(r"<#([\d\/]+)>")
@@ -249,9 +252,20 @@ def emoji_name(emoji_char):
     return utils.demojize(emoji_char).replace(":", "")
 
 
-def replace_emoji_string(line):
-    """Replace emoji string (:emoji:) with single character"""
-    return re.sub(match_emoji, TREE_EMOJI_REPLACE, line)
+def replace_wide(text, replacement=TREE_EMOJI_REPLACE):
+    """Replace all wide characters in string with given character"""
+    if not text:
+        return ""
+    new_text = []
+    for i, ch in enumerate(text):
+        character = ord(ch)
+        if 0x20 <= character < 0x7f:
+            new_text.append(ch)
+        elif binary_search(character, WIDE_RANGES):
+            new_text.append(replacement)
+        else:
+            new_text.append(ch)
+    return "".join(new_text)
 
 
 def binary_search(codepoint, ranges):
@@ -276,11 +290,11 @@ def limit_width_wch(text, max_width):
     """Limit width of the text on the screen, because "wide characters" are 2 characters wide"""
     total_width = 0
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(ch)
+        if 0x20 <= codepoint < 0x7f:
             char_width = 1
         else:
-            char_width = 1 + binary_search(character, WIDE_RANGES)
+            char_width = 1 + binary_search(codepoint, WIDE_RANGES)
         if total_width + char_width > max_width:
             return text[:i], total_width
         total_width += char_width
@@ -291,11 +305,11 @@ def len_wch(text):
     """Return real display width for a string"""
     total_width = 0
     for ch in text:
-        character = ord(ch)
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(ch)
+        if 0x20 <= codepoint < 0x7f:
             total_width += 1
         else:
-            total_width += 1 + binary_search(character, WIDE_RANGES)
+            total_width += 1 + binary_search(codepoint, WIDE_RANGES)
     return total_width
 
 
@@ -303,11 +317,11 @@ def split_index_wch(text, max_width):
     """Get split index for string with wide characters"""
     width = 0
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(ch)
+        if 0x20 <= codepoint < 0x7f:
             w = 1
         else:
-            w = 1 + binary_search(character, WIDE_RANGES)
+            w = 1 + binary_search(codepoint, WIDE_RANGES)
         if width + w > max_width:
             return i
         width += w
@@ -321,8 +335,8 @@ def fix_line_format(line_format, text):
 
     wide_positions = []
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if (character < 0x20 or character >= 0x7f) and binary_search(character, WIDE_RANGES):
+        codepoint = ord(ch)
+        if (codepoint < 0x20 or codepoint >= 0x7f) and binary_search(codepoint, WIDE_RANGES):
             wide_positions.append(i)
     if not wide_positions:
         return line_format
@@ -343,8 +357,8 @@ def fix_line_format_extended(line_format, text):
 
     wide_positions = []
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if (character < 0x20 or character >= 0x7f) and binary_search(character, WIDE_RANGES):
+        codepoint = ord(ch)
+        if (codepoint < 0x20 or codepoint >= 0x7f) and binary_search(codepoint, WIDE_RANGES):
             wide_positions.append(i)
     if not wide_positions:
         return line_format
@@ -365,8 +379,8 @@ def fix_map_ranges(map_ranges, text):
 
     wide_positions = []
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if (character < 0x20 or character >= 0x7f) and binary_search(character, WIDE_RANGES):
+        codepoint = ord(ch)
+        if (codepoint < 0x20 or codepoint >= 0x7f) and binary_search(codepoint, WIDE_RANGES):
             wide_positions.append(i)
     if not wide_positions:
         return map_ranges
@@ -388,6 +402,7 @@ if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endc
         init_wide_ranges,
         len_wch,
         limit_width_wch,
+        replace_wide,
         split_index_wch,
     )
     init_wide_ranges(WIDE_RANGES)
@@ -496,6 +511,25 @@ def shift_formats(formats, index, diff, skip=1):
             new_chat_format[2] += diff
         new_formats.append(new_chat_format)
     return new_formats
+
+
+def replace_formatted(text, formats, key, replacement, color=None, attr=None):
+    """Replaces a key in text and updates existing format indices (for 4 element format!)"""
+    start_idx = text.find(key)
+    if start_idx == -1:
+        return text, formats
+    replacement_len = len(replacement)
+    shift = replacement_len - len(key)
+    new_text = text.replace(key, replacement, 1)
+    new_formats = []
+    for color_f, attr_f, start, end in formats:   # shift formats
+        if end <= start_idx:
+            new_formats.append([color_f, attr_f, start, end])
+        else:
+            new_formats.append([color_f, attr_f, start + shift, end + shift])
+    if replacement and (color is not None or attr is not None):
+        new_formats.append([color, attr, start_idx, start_idx + replacement_len])
+    return new_text, new_formats
 
 
 def replace_discord_emoji(text, placeholder=None, *ranges_lists):
@@ -1561,15 +1595,15 @@ class ChatGenerator:
                                 if self.trim_embed_url_size:
                                     embed_url = trim_string(embed_url, self.trim_embed_url_size)
                                 content += f"[{clean_type(embed["type"])} embed]: {embed_url}"
-                reply_line = lazy_replace(self.format_reply, "%username", lambda: normalize_string(ref_message["username"], self.dyn_limit_username, emoji_safe=False, fill=not(self.dynamic_name_len)))
-                reply_line = lazy_replace(reply_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=True, fill=not(self.dynamic_name_len)))
+                reply_line = lazy_replace(self.format_reply, "%username", lambda: normalize_string(ref_message["username"], self.dyn_limit_username, emoji_safe=False, fill=not (self.dynamic_name_len)))
+                reply_line = lazy_replace(reply_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=True, fill=not (self.dynamic_name_len)))
                 reply_line = lazy_replace(reply_line, "%timestamp", lambda: generate_timestamp(ref_message["timestamp"], self.format_timestamp, self.convert_timezone))
                 pre_content_len = len(reply_line.split("%content")[0])
                 reply_line = lazy_replace(reply_line, "%content", lambda: content.replace("\r", " ").replace("\n", " "))
             else:
                 global_name = "Unknown"
-                reply_line = lazy_replace(self.format_reply, "%username", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=False, fill=not(self.dynamic_name_len)))
-                reply_line = lazy_replace(reply_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=False, fill=not(self.dynamic_name_len)))
+                reply_line = lazy_replace(self.format_reply, "%username", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=False, fill=not (self.dynamic_name_len)))
+                reply_line = lazy_replace(reply_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=False, fill=not (self.dynamic_name_len)))
                 reply_line = reply_line.replace("%timestamp", self.placeholder_timestamp)
                 reply_line = lazy_replace(reply_line, "%content", lambda: ref_message["content"].replace("\r", "").replace("\n", ""))
                 emoji_ranges = []
@@ -1737,9 +1771,9 @@ class ChatGenerator:
             "%username",
             lambda: normalize_string(message["username"],
             self.dyn_limit_username, emoji_safe=False,
-            fill=not(self.dynamic_name_len)),
+            fill=not (self.dynamic_name_len)),
         )
-        message_line = lazy_replace(message_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=True, fill=not(self.dynamic_name_len)))
+        message_line = lazy_replace(message_line, "%global_name", lambda: normalize_string(global_name, self.dyn_limit_username, emoji_safe=True, fill=not (self.dynamic_name_len)))
         message_line = lazy_replace(message_line, "%timestamp", lambda: generate_timestamp(message["timestamp"], self.format_timestamp, self.convert_timezone))
         message_line = message_line.replace("%edited", self.edited_string if edited else "")
         message_line = lazy_replace(message_line, "%app", lambda: app_string if app_string else "")
@@ -2146,7 +2180,7 @@ class ChatGenerator:
         return chat, chat_format, chat_map
 
 
-def generate_status_line(my_user_data, my_status, unseen, typing, active_channel, action, tasks, tabs, tabs_format, format_status_line, format_rich, slowmode=None, vim_mode=None, limit_typing=30, use_nick=True, fun=True):
+def generate_status_line(my_user_data, my_status, unseen, typing, active_channel, action, tasks, tabs, tabs_format, format_status_line, format_rich, colors, my_role_color, status_sign, slowmode=None, vim_mode=None, limit_typing=30, use_nick=True, fun=True):
     """
     Generate status line according to provided formatting.
     Possible options for format_status_line:
@@ -2161,11 +2195,11 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
         %rich
         %server
         %channel
+        %channel_no_tab - no text if there are tabs
         %action   # replying/editig/deleting
         %task   # currently running long task
         %tabs
         %slowmode   # 'slowmode {time}'
-        %afk   # '[AFK]'
         %vim_mode   # [--NORMAL--] / [--INSERT--]
     Possible options for format_rich:
         %type
@@ -2177,6 +2211,8 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
     length of the %typing string can be limited with limit_typing
     use_nick will make it use nick instead username whenever possible.
     """
+    color_low = colors[8]
+    color_standout = colors[9]
     # typing
     if "%typing" in format_status_line:
         if len(typing) == 0:
@@ -2212,20 +2248,9 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
             details = my_status["activities"][0]["details"][:limit_typing]
             # sm_txt = my_status["activities"][0]["small_text"]
             # lg_txt = my_status["activities"][0]["large_text"]
-            activiy_type = my_status["activities"][0]["type"]
-            if activiy_type == 0:
-                verb = "Playing"
-            elif activiy_type == 1:
-                verb = "Streaming"
-            elif activiy_type == 2:
-                verb = "Listening to"
-            elif activiy_type == 3:
-                verb = "Watching"
-            elif activiy_type == 5:
-                verb = "Competing in"
             rich = (
                 format_rich
-                .replace("%type", verb)
+                .replace("%type", ACTIVITY_VERBS[my_status["activities"][0]["type"]])
                 .replace("%name", my_status["activities"][0]["name"])
                 .replace("%state", state or "")
                 .replace("%details", details or "")
@@ -2300,9 +2325,29 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
         have_tabs = False
 
     if my_status["client_state"] == "online":
+        warn_state = "[AFK]" if my_status["afk"] else ""
+        warn_state_color = 19
         status = my_status["status"]
+        if status == "online":
+            status_color = 18
+        elif status == "dnd":
+            status_color = 20
+        elif status == "idle":
+            status_color = 19
+        else:
+            status_color = color_low
+        status_dot_color = status_color
     else:
         status = my_status["client_state"]
+        warn_state = f"[{status}]"
+        if status == "connecting":
+            status_color = 19
+            status_dot_color = color_low
+        else:   # offline/error
+            status_color = 20
+            status_dot_color = color_low
+        warn_state_color = status_color
+
     guild = active_channel["guild_name"]
 
     if slowmode is None:
@@ -2319,38 +2364,43 @@ def generate_status_line(my_user_data, my_status, unseen, typing, active_channel
     else:
         vim_mode = ""
 
-    status_line = (
+    sl_format = []
+    sl_text = (
         format_status_line
-        .replace("%global_name", get_global_name(my_user_data, use_nick))
+        .replace("%global_name", get_global_name(my_user_data, False))
         .replace("%username", my_user_data["username"])
-        .replace("%status", status)
         .replace("%custom_status", str(my_status["custom_status"]))
         .replace("%custom_emoji", custom_status_emoji)
         .replace("%pronouns", str(my_user_data["pronouns"]))
-        .replace("%unreads", "[New unreads]" if unseen else "")
-        .replace("%typing", typing_string)
         .replace("%rich", rich)
-        .replace("%server", guild or "DM")
+        .replace("%channel_no_tab", str("" if tabs else active_channel["channel_name"]))
         .replace("%channel", str(active_channel["channel_name"]))
         .replace("%action", action_string)
         .replace("%task", task)
         .replace("%tabs", tabs)
-        .replace("%slowmode", slowmode)
-        .replace("%afk", "[AFK]" if my_status["afk"] else "")
         .replace("%vim_mode", vim_mode)
         .replace("%app_name", APP_NAME)
     )
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%nick", get_global_name(my_user_data, True), my_role_color, None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%status_dot", status_sign, status_dot_color, None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%status", "status", status_color, 1 if status == "ERROR" else None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%warn_state", warn_state, warn_state_color, 1)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%unreads", "[New unreads]" if unseen else "", 19, None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%typing", typing_string, color_standout, None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%server", guild or "DM", color_standout, None)
+    sl_text, sl_format = replace_formatted(sl_text, sl_format, "%slowmode", slowmode, color_low, 1)
 
-    status_line_format = []
     if have_tabs:
-        pre_tab_len = len(status_line.split(tabs)[0])
+        pre_tab_len = len(sl_text.split(tabs)[0])
         for tab in tabs_format:
-            status_line_format.append((tab[0], tab[1] + pre_tab_len, tab[2] + pre_tab_len))
+            sl_format.append((tab[0], tab[1], tab[2] + pre_tab_len, tab[3] + pre_tab_len))
+    else:
+        pre_tab_len = 0
 
-    return status_line, status_line_format
+    return sl_text, sl_format, pre_tab_len
 
 
-def generate_tab_string(tabs, active_tab, read_state, format_tabs, tabs_separator, limit_len, max_len):
+def generate_tab_string(channel_cache, active_channel_id, read_state, format_tab, tabs_separator, limit_len, max_len, fill_line, colors):
     """
     Generate tabs list string according to provided formatting.
     Possible options for generate_tab_string:
@@ -2359,28 +2409,63 @@ def generate_tab_string(tabs, active_tab, read_state, format_tabs, tabs_separato
         %server
     """
     tabs_separated = []
-    tab_string_format = []   # [[attribute, start, end] ...]
-    tab_string_map = []   # [(start, end, tab_num), ...]   # tab_num = -1 - arrow left -2 - arrow rignt
+    tab_string_map = []   # [[start, end, tab_num], ...]   # tab_num = -1 - arrow left -2 - arrow rignt
     trimmed_left = False
-    for num, tab in enumerate(tabs):
+    default_color = colors[0]
+
+    if not channel_cache:
+        return "", [], tab_string_map
+    num_tabs = 0
+    temp_tab = True
+    for channel in channel_cache:
+        if channel[2]:
+            num_tabs += 1
+            temp_tab = channel[3]   # in case there is only one tab
+    if num_tabs <= 1 and temp_tab:
+        return "", [], tab_string_map
+
+    separators_len = max(0, num_tabs) * len(tabs_separator)
+    available = max_len - separators_len
+    if available > 0:
+        limit_len = min(limit_len, max(MIN_TAB_LEN, available // num_tabs))
+
+    active_tab = None
+    tab_string_format = []   # [[color, attribute] ...]
+    num = 0
+    for tab in channel_cache:
+        if not tab[2]:
+            continue
+        channel_id = tab[0]
+        channel_name = replace_wide(tab[4], "")
+        guild_name = replace_wide(tab[5], "")
         tab_text = (
-            format_tabs
+            format_tab
             .replace("%num", str(num + 1))
-            .replace("%name", tab["channel_name"])
-            .replace("%server", tab["guild_name"])
-        )[:limit_len]
+            .replace("%name", channel_name)
+            .replace("%server", guild_name)
+        )
+        if limit_len:
+            tab_text = tab_text[:limit_len].center(limit_len)
+        if fill_line:
+            tab_text = tab_text.replace(" ", "─")
         tabs_separated.append(tab_text)
 
-        if num == active_tab:
-            tab_string_format.append([3])   # underline
-        elif is_unseen(read_state.get(tab["channel_id"])):
-            tab_string_format.append([1])   # bold
+        ch_read_state = read_state.get(channel_id)
+        if channel_id == active_channel_id:
+            tab_string_format.append([6, 3 + bool(tab[3])])   # underline + color_tree_active (id 6)
+        elif ch_read_state and ch_read_state["mentions"]:
+            tab_string_format.append([8, 2 if tab[3] else None])   # red - color_tree_mentioned (id 8)
+        elif is_unseen(ch_read_state):
+            tab_string_format.append([None, 5 if tab[3] else 1])   # bold
+        elif tab[3]:
+            tab_string_format.append([None, 2])   # italic
         else:
             tab_string_format.append(None)
 
         # scroll to active if string is too long
+        active_tab = num
         scroll_index = 0
-        if num == active_tab:
+        if channel_id == active_channel_id:
             while len(tabs_separator.join(tabs_separated)) >= max_len:
                 if not tabs_separated:
                     break
@@ -2390,27 +2475,36 @@ def generate_tab_string(tabs, active_tab, read_state, format_tabs, tabs_separato
                 scroll_index += 1
         if (active_tab and num >= active_tab) and len(tabs_separator.join(tabs_separated)) >= max_len:
             break
+        num += 1
+
     # add format start and end indexes
+    prev_end = None
+    tab_string_format_final = []   # [[color, attribute, start, end] ...]
     for num, tab in enumerate(tabs_separated):
         start = len(tabs_separator.join(tabs_separated[:num])) + bool(num) * len(tabs_separator) + 2 * trimmed_left
         end = start + len(tab)
-        tab_string_map.append((start, end, num + scroll_index))
+        tab_string_map.append([start, end, num + scroll_index])
         if tab_string_format[num]:
-            tab_string_format[num] = [tab_string_format[num][0], start, end]
-    tab_string_format = [x for x in tab_string_format if x is not None and len(x) == 3]
+            tab_string_format_final.append([tab_string_format[num][0], tab_string_format[num][1], start, end])
+        if fill_line and prev_end is not None:
+            tab_string_format_final.append([default_color, None, prev_end, start])
+        prev_end = end
 
     tab_string = tabs_separator.join(tabs_separated)
 
     if trimmed_left:
         tab_string = f"< {tab_string}"
-        tab_string_map.insert(0, (0, 1, -1))
+        tab_string_map.insert(0, [0, 1, -1])
 
     # trim right side of tab string
     if len(tab_string) > max_len:
         tab_string = tab_string[:max_len - 2 * (trimmed_left + 1)] + " >"
-        tab_string_map.insert(0, (len(tab_string)-1, len(tab_string), -2))   # insert so it overrides other ranges
+        tab_string_map.insert(0, [len(tab_string)-1, len(tab_string), -2])   # insert so it overrides other ranges
+    elif len(tab_string) < max_len - 2:
+        tab_string += tabs_separator
+        tab_string_format_final.append([default_color, None, len(tab_string) - 1, len(tab_string)])
 
-    return tab_string, tab_string_format, tab_string_map
+    return tab_string, tab_string_format_final, tab_string_map
 
 
 def generate_prompt(my_user_data, active_channel, format_prompt, limit_prompt=15, vim_mode=None):
@@ -2474,27 +2568,78 @@ def generate_log(log, colors, max_width):
     chat = []
     chat_format = []
     chat_map = []
+    color_base = colors[0]
+    color_low = colors[8]
+    log_level_colors = (colors[9], 18, 19, 20, 20)
     for message in log:
         chat.extend(split_long_line(message, max_width, 4))
-        chat_format.extend([[[colors[0]]]] * len(chat))
-        chat_map.extend([None] * len(chat))
+    for line in chat:
+        line_format = [[color_base]]
+        first_word = line.split(" ")[0]
+        if first_word.count("-") == 3 and first_word.count(":") == 2:   # definitely a time string
+            line_format.append([color_low, 0, len(first_word)])
+        for i, level in enumerate(LOG_LELVELS):
+            level_idx = line.find(level)
+            if level_idx != -1:
+                line_format.append([log_level_colors[i], level_idx, level_idx + len(level)])
+                break
+        chat_format.append(line_format)
+        chat_map.append(None)
     chat = chat[::-1]
+    chat_format = chat_format[::-1]
     return chat, chat_format, chat_map
 
 
-def generate_extra_line(attachments, selected, max_len):
+def generate_about(about, colors, colors_formatted, max_width):
+    """Generate about lines shown in chat area"""
+    chat = []
+    chat_format = []
+    chat_map = []
+    color_base = colors[0]
+    color_url = colors_formatted[7][0][0]
+    for line in about.split("\n"):
+        if not line:
+            chat.append("")
+        else:
+            chat.extend(split_long_line(line, max_width, 4))
+    for num, line in enumerate(chat):
+        if line.startswith("# "):
+            chat[num] = line[2:].center(max_width)
+            chat_format.append([[18]])   # green
+            chat_map.append(None)
+        elif line.startswith("https://"):
+            chat[num] = line.center(max_width)
+            start = chat[num].find(line)
+            chat_format.append([[color_base], [color_url, start, start + len(line)]])
+            this_line_ranges = (((start, start + len(line), line), ), None, None, None, None, None)
+            chat_map.append((0, None, None, None, None, this_line_ranges))
+        else:
+            chat[num] = line.center(max_width)
+            chat_format.append([[color_base]])
+            chat_map.append(None)
+    chat = chat[::-1]
+    chat_format = chat_format[::-1]
+    chat_map = chat_map[::-1]
+    return chat, chat_format, chat_map
+
+
+def generate_extra_line_upload(attachments, selected, max_len, colors):
     """
     Generate extra line containing attachments information, with format:
     Attachments: [attachment.name] - [Uploading/OK/Too-Large/Restricted/Failed], Selected:N, Total:N
     """
+    color_standout = colors[9]
     if attachments:
         total = len(attachments)
         name = attachments[selected]["name"]
+        state_color = 20
         match attachments[selected]["state"]:
             case 0:
                 state = "Uploading"
+                state_color = 19
             case 1:
                 state = "OK"
+                state_color = 18
             case 2:
                 state = "Too Large"
             case 3:
@@ -2503,16 +2648,34 @@ def generate_extra_line(attachments, selected, max_len):
                 state = "Failed"
             case _:
                 state = "Unknown"
-        end = f" - {state}, Selected:{selected + 1}, Total:{total}"
-        return f" Attachments: {name}"[:max_len - len(end)] + end
-    return ""
+        right = f" - {state}, Selected:{selected + 1}, Total:{total}"
+        left = f" Attachments: {name}"[:max_len - len(right)]
+        left_end = len(left) - 1
+        total_idx = right.rfind(":") + 1
+        selected_idx = right.rfind(":", 0, total_idx - 1) + 1
+        line_format = [
+            (color_standout, None, 13, left_end),
+            (state_color, None, left_end + 3, left_end + 3 + len(state)),
+            (color_standout, None, left_end + selected_idx, left_end + selected_idx + len(str(selected))),
+            (color_standout, None, left_end + total_idx, left_end + total_idx + len(str(total))),
+        ]
+        return left + right, line_format
+    return "", []
 
 
-def generate_extra_line_ring(caller_name, max_len, bordered):
+def generate_extra_line_ring(caller_name, max_len, bordered, colors):
     """Generate extra line containing iformation about incoming call"""
     max_len = max_len - bordered * 3
+    color_standout = colors[9]
     left_text = f"{caller_name} is calling you, use commands: voice_*"
     right_text = "[Accept] [Reject]"
+    max_str_length = max_len - len(right_text) - 3   # 3 for ...
+
+    line_format = [
+        (color_standout, None, 0, len(caller_name[:max_str_length])),
+        (18, None, max_len - 17, max_len - 9),
+        (20, None, max_len - 8, max_len),
+    ]
 
     if len(left_text) + 1 + len(right_text) <= max_len:
         space_num = max_len - (len(left_text) + len(right_text))
@@ -2520,36 +2683,44 @@ def generate_extra_line_ring(caller_name, max_len, bordered):
             filler = " " + "─" * (space_num - 2) + " "
         else:
             filler = " " * space_num
-        return left_text + filler + right_text
+        return left_text + filler + right_text, line_format
 
-    max_str_length = max_len - len(right_text) - 3   # 3 for ...
     shortened_str = left_text[:max_str_length] + "..."
-    return shortened_str + right_text
+    return shortened_str + right_text, line_format
 
 
-def generate_extra_line_call(call_participants, volume_in, volume_out, max_len, bordered, rtt):
+def generate_extra_line_call(call_participants, volume_in, volume_out, max_len, bordered, rtt, colors):   # noqa
     """Generate extra line containing iformation about ongoing call"""
     max_len = max_len - bordered * 3
+    color_standout = colors[9]
     left_text = "In the call: You"
-    rtt_text = f"({min(rtt, 999.9):.1f}ms) " if rtt is not None else ""
+    rtt_text = ""   # f"({min(rtt, 999.9):.1f}ms) " if rtt is not None else ""
     right_text = f"{rtt_text}[I:{(str(volume_in)+"%").center(4)} O:{(str(volume_out)+"%").center(4)}] [Leave]"
+    max_str_length = max_len - len(right_text) - 3   # 3 for ...
 
     for participant in call_participants:
         left_text += f", {participant["name"]}"
         if len(left_text) + 1 + len(right_text) > max_len:
             break
 
+    line_format = [
+        (color_standout, None, 13, len(left_text[:max_str_length])),
+        (color_standout, None, max_len - 23, max_len - 8),
+        (20 if volume_in == 0 else None, None, max_len - 15, max_len - 9),
+        (20 if volume_in == 0 else None, None, max_len - 22, max_len - 16),
+        (20, None, max_len - 7, max_len),
+    ]
+
     if len(left_text) + 1 + len(right_text) <= max_len:
         space_num = max_len - (len(left_text) + len(right_text))
         if bordered:
             filler = " " + "─" * (space_num - 2) + " "
         else:
             filler = " " * space_num
-        return left_text + filler + right_text
+        return left_text + filler + right_text, line_format
 
-    max_str_length = max_len - len(right_text) - 3   # 3 for ...
     shortened_str = left_text[:max_str_length] + "..."
-    return shortened_str + right_text
+    return shortened_str + right_text, line_format
 
 
 def generate_extra_window_call(call_participants, me_muted, colors, max_len):
@@ -2645,10 +2816,11 @@ def generate_extra_window_profile(user_data, user_roles, presence, colors, max_l
         text = f"Status: {status}{custom}"
         lines = split_long_line(text, max_len)
         body.extend(lines)
-        body_format.extend(([(color_standout, 0, 0, 6), (color_standout, 1, 8, len(status) + 8)],), *[None] * (len(lines) - 1))
+        color_status = 18 if status == "Online" else 19 if status == "Idle" else 20 if status == "DnD" else color_low
+        body_format.extend(([(color_standout, 0, 0, 6), (color_status, 1, 8, len(status) + 8)],), *[None] * (len(lines) - 1))
     else:
         body.append("Status: Offline")
-        body_format.append(([(color_standout, 0, 0, 6), (color_standout, 1, 8, max_len)]))
+        body_format.append(([(color_standout, 0, 0, 6), (color_low, 1, 8, max_len)]))
 
     # misc
     if user_data["tag"]:
@@ -2666,17 +2838,7 @@ def generate_extra_window_profile(user_data, user_roles, presence, colors, max_l
             body.append("")
             body_format.append(None)
         for activity in presence["activities"]:
-            activity_type = activity["type"]
-            if activity_type == 0:
-                action = "Playing"
-            elif activity_type == 1:
-                action = "Streaming"
-            elif activity_type == 2:
-                action = "Listening to"
-            elif activity_type == 3:
-                action = "Watching"
-            elif activity_type == 5:
-                action = "Competing in"
+            action = ACTIVITY_VERBS[activity["type"]]
             if activity["state"]:
                 state = f"{activity["state"]}"
             else:
@@ -3042,9 +3204,8 @@ def generate_extra_window_stats(data, texts, colors, max_len):
     color_standout = colors[9]
     body = []
     body_format = []
-    data_idx = 0
-    for text in texts:
-        value = data[data_idx]
+    for num, text in enumerate(texts):
+        value = data[num]
         if isinstance(value, tuple):
             line = f"{text}: {value[0]} ({value[1]})"[:max_len]
             body.append(line)
@@ -3059,7 +3220,6 @@ def generate_extra_window_stats(data, texts, colors, max_len):
             line = f"{text}: {value}"[:max_len]
             body.append(line)
             body_format.append([(color_standout, None, len(text) + 2, len(line))])
-        data_idx += 1
     return title_line[:max_len], body, body_format
 
 
@@ -3125,13 +3285,17 @@ def generate_forum(threads, blocked, max_length, colors, colors_formatted, confi
     return forum, forum_format
 
 
-def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_sign):
+def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_sign, emoji_safe, colors, fun=True):
     """Generate member list"""
     # colors: 18 - green, 19 - orange, 20 - red
-    member_list = []
-    member_list_format = []
+    color_low = colors[8]
+    color_standout = colors[9]
     if not member_list_raw:
         return ["No members".center(width-1, " ")], [[]]
+    member_list = []
+    member_list_format = []
+    filler = " " * width
+    first = True
     for member in member_list_raw:
         this_format = []
         if "id" in member:
@@ -3147,7 +3311,6 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
                 this_format.append([19, None, 0, 2])
             elif member["status"] == "offline":
                 text = f"  {global_name}"
-                # this_format.append([])
             else:   # online
                 this_format.append([18, None, 0, 2])
 
@@ -3158,6 +3321,24 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
                     if role.get("color_id"):
                         this_format.append([role["color_id"], None, 2, width])
                     break
+            member_list.append(normalize_string(text, width-1, emoji_safe=True))
+            member_list_format.append(this_format)
+
+            if member["activities"]:
+                activities = member["activities"]
+                activity_type = activities[0][0]
+                verb = ACTIVITY_VERBS[activity_type] if emoji_safe else ACTIVITY_ICONS[activity_type]
+                activity_title = activities[0][1]
+                if fun and not emoji_safe and activity_type == 2 and "metal" in activity_title:
+                    verb = "🤘"
+                status_text = f"  {verb}{f"+{len(activities)-1}" if len(activities) > 1 else ""} {activity_title}"
+                member_list.append(normalize_string(status_text, width-1, emoji_safe=True) + filler)
+                len_verb = len(verb) + (2 if len(activities) > 1 else 0)
+                member_list_format.append(((color_standout, None, 0, 2 + len_verb), (color_low, None, 2 + len_verb, width)))
+            elif member["custom_status"]:
+                status_text = f"  {member["custom_status"]}"
+                member_list.append(normalize_string(status_text, width-1, emoji_safe=True) + filler)
+                member_list_format.append(((color_low, None, 0, width),))
 
         else:   # user group
             text = "Unknown group"
@@ -3169,9 +3350,13 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
             for role in guild_roles:
                 if role["id"] == group_id:
                     text = role["name"]
-            this_format = []
-        member_list.append(normalize_string(text, width-1, emoji_safe=True))
-        member_list_format.append(this_format)
+            if not first:
+                member_list.append(filler)
+                member_list_format.append(this_format)
+            else:
+                first = False
+            member_list.append(normalize_string(text, width-1, emoji_safe=True))
+            member_list_format.append(this_format)
 
     return member_list, member_list_format
 
@@ -3287,7 +3472,7 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
         muted = dm.get("muted", False)
         active = (dm["id"] == active_channel_id)
         if safe_emoji:
-            name = replace_emoji_string(utils.demojize(name))
+            name = replace_wide(name)
         code = 300
         # get dm status
         if len(dm["recipients"]) == 1:
@@ -3309,7 +3494,7 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
             states = voice_states.get(dm["id"])
             if states and len(states) > 1:
                 mention_count = f"{mention_count} [{min(states[0], 99)}]"
-        tree.append(normalize_string_with_suffix(f"{intersection} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+        tree.append(normalize_string_with_suffix(f"{intersection} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
         dm_pings += len(ch_read_state["mentions"]) if unseen_dm else 0
         if muted and not active:
             code += 10
@@ -3507,9 +3692,9 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
         # add guild to the tree
         name = guild["name"]
         if safe_emoji:
-            name = replace_emoji_string(utils.demojize(name))
+            name = replace_wide(name)
         mention_count = generate_count(ping_guild)
-        tree.append(normalize_string_with_suffix(f"{dd_pointer} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+        tree.append(normalize_string_with_suffix(f"{dd_pointer} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
         code = 101
         if muted_guild:
             code += 10
@@ -3551,9 +3736,9 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
                     # add to the tree
                     name = category["name"]
                     if safe_emoji:
-                        name = replace_emoji_string(utils.demojize(name))
+                        name = replace_wide(name)
                     mention_count = generate_count(category["ping"])
-                    tree.append(normalize_string_with_suffix(f"{intersection}{dd_pointer} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+                    tree.append(normalize_string_with_suffix(f"{intersection}{dd_pointer} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
                     code = 201
                     if category["muted"]:
                         code += 10
@@ -3581,12 +3766,12 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
                             channel_threads = channel.get("threads", [])
                             channel_index = len(tree_format)
                             if safe_emoji:
-                                name = replace_emoji_string(utils.demojize(name))
+                                name = replace_wide(name)
                             mention_count = generate_count(channel["ping"])
                             if forum:
-                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{dd_forum} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{dd_forum} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
                             elif channel_threads:
-                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{dd_pointer} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{dd_pointer} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
                             elif channel.get("voice"):
                                 states = voice_states.get(channel["id"])
                                 if (states and len(states) > 1) or channel["user_limit"]:
@@ -3595,9 +3780,9 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
                                     call_count = f"[{count}{limit}]"
                                 else:
                                     call_count = ""
-                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{voice_char} {name}", call_count, max_width, emoji_safe=not(safe_emoji)))
+                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection}{voice_char} {name}", call_count, max_width, emoji_safe=not (safe_emoji)))
                             else:
-                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+                                tree.append(normalize_string_with_suffix(f"{pass_by}{intersection} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
                             if channel_threads:
                                 code = 500
                             else:
@@ -3636,7 +3821,7 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
                                 unseen = is_unseen(ch_read_state)
                                 mentioned = unseen and ch_read_state["mentions"]
                                 if safe_emoji:
-                                    name = replace_emoji_string(utils.demojize(name))
+                                    name = replace_wide(name)
                                 tree.append(f"{pass_by}{pass_by}{intersection_thread} {name}")
                                 code = 400
                                 if (thread["muted"] or not joined) and not active:
@@ -3668,9 +3853,9 @@ def generate_tree(dms, guilds, threads, read_state, guild_folders, activities, c
                 else:
                     name = category["name"]
                     if safe_emoji:
-                        name = replace_emoji_string(utils.demojize(name))
+                        name = replace_wide(name)
                     mention_count = generate_count(category["ping"])
-                    tree.append(normalize_string_with_suffix(f"{intersection} {name}", mention_count, max_width, emoji_safe=not(safe_emoji)))
+                    tree.append(normalize_string_with_suffix(f"{intersection} {name}", mention_count, max_width, emoji_safe=not (safe_emoji)))
                     code = 300
                     if muted and not category["active"]:
                         code += 10

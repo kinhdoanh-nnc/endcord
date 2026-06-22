@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import os
 import shutil
@@ -21,6 +20,7 @@ if sys.platform == "win32":
     kernel32.GetConsoleMode(H_STDOUT, ctypes.byref(OLD_OUT_MODE))
 else:
     import fcntl
+    import select
     import termios
     import tty
     STDIN_FD = sys.stdin.fileno()
@@ -137,43 +137,42 @@ def draw_over_curses(text, y, x):
 def read_key():
     """Blocking read key, return key code like curses.getch(), alt sequences are not handled"""
     fd = sys.stdin.fileno()
-    old_flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    try:
-        # wait for first byte
-        first = os.read(fd, 1)
 
-        # using O_NONBLOCK instead select() for windows compatibility
-        fcntl.fcntl(fd, fcntl.F_SETFL, old_flags | os.O_NONBLOCK)
+    # wait for first byteZ
+    first = os.read(fd, 1)
 
-        # backspace
-        if first == b"\x7f":
-            return 263
+    # backspace
+    if first == b"\x7f":
+        return 263
 
-        # single code
-        if first != b"\x1b":
-            return KEY_CODES.get(first, ord(first))
+    # single code
+    if first != b"\x1b":
+        return KEY_CODES.get(first, ord(first))
 
-        # escape sequences
-        seq = first
-        start = time.time()
-        while time.time() - start < 0.01:   # 10ms timeout
+    # escape sequences
+    seq = first
+    start = time.time()
+    while True:
+        time_left = 0.01 - (time.time() - start)
+        if time_left <= 0:
+            break
+        ready, _, _ = select.select([fd], [], [], time_left)
+        if ready:
             try:
                 byte = os.read(fd, 1)
                 if not byte:
-                    time.sleep(0.001)
                     continue
                 seq += byte
                 if seq in KEY_CODES:
                     return KEY_CODES[seq]
                 if len(seq) > 6:
                     break
-            except BlockingIOError:
-                time.sleep(0.001)
+            except (IOError, OSError):
+                break
+        else:
+            break
 
-        return 27
-
-    finally:
-        fcntl.fcntl(fd, fcntl.F_SETFL, old_flags)
+    return 27
 
 
 def read_key_win():
@@ -202,22 +201,15 @@ def esc_detector():
     global run_esc_detector
     run_esc_detector = True
     fd = sys.stdin.fileno()
-    old_flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    try:
-        fcntl.fcntl(fd, fcntl.F_SETFL, old_flags | os.O_NONBLOCK)
-        while run_esc_detector:
+    while run_esc_detector:
+        ready_to_read, _, _ = select.select([fd], [], [], 0.01)
+        if ready_to_read:
             try:
                 byte = os.read(fd, 1)
-                if not byte:
-                    time.sleep(0.01)
-                elif byte == b"\x1b":
+                if byte and byte == b"\x1b":
                     run_esc_detector = False
-                else:
-                    time.sleep(0.01)
-            except BlockingIOError:
-                time.sleep(0.01)
-    finally:
-        fcntl.fcntl(fd, fcntl.F_SETFL, old_flags)
+            except (IOError, OSError):
+                pass
 
 
 def esc_detector_win():

@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import logging
 import re
@@ -556,7 +555,7 @@ def command_string(text):
             pass
 
     # 6 - PLAY
-    elif text_lower.startswith("play"):
+    elif text_lower.startswith("play") and text_lower[4:5] != "_":
         cmd_type = 6
         try:
             num = int(text.split(" ")[1])
@@ -722,6 +721,9 @@ def command_string(text):
     # 30 - TOGGLE_TAB
     elif text_lower.startswith("toggle_tab"):
         cmd_type = 30
+        match = re.search(match_channel, text)
+        if match:
+            cmd_args = {"channel_id": match.group(1)}
 
     # 31 - SWITCH_TAB
     elif text_lower.startswith("switch_tab"):
@@ -859,19 +861,6 @@ def command_string(text):
     # 45 - BLOCK
     elif text_lower.startswith("block"):
         cmd_type = 45
-        match = re.search(match_profile, text)
-        if match:
-            cmd_args = {
-                "user_id": match.group(1),
-                "ignore": "ignore" in text_lower,
-            }
-        else:
-            cmd_type = 0
-            cmd_args = {"value": 1}
-
-    # 46 - UNBLOCK
-    elif text_lower.startswith("unblock"):
-        cmd_type = 46
         match = re.search(match_profile, text)
         if match:
             cmd_args = {
@@ -1178,5 +1167,18 @@ def command_string(text):
         else:
             cmd_type = 0
             cmd_args = {"value": 1}
+
+    # 85 - PLAY_IN_NATIVE
+    elif text_lower.startswith("play_in_native"):
+        cmd_type = 85
+        try:
+            num = int(text.split(" ")[1])
+            cmd_args = {"num": num}
+        except (IndexError, ValueError):
+            pass
+
+    # 86 - ABOUT
+    elif text_lower.startswith("about"):
+        cmd_type = 86
 
     return cmd_type, cmd_args

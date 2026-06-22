@@ -5,7 +5,6 @@ from Cython.Build import cythonize
 from setuptools import Extension, setup
 
 extra_compile_args = [
-    "-flto=thin",
     "-g0",
     "-O3",
     "-ffast-math",
@@ -15,7 +14,6 @@ extra_compile_args = [
     "-DNDEBUG",
 ]
 extra_link_args = [
-    "-flto=thin",
     "-Wl,-O3",
     "-Wl,-s",
     "-Wl,--sort-common",
@@ -23,9 +21,11 @@ extra_link_args = [
     "-Wl,--as-needed",
     "-Wl,--exclude-libs,ALL",
 ]
-
 if shutil.which("lld") and os.environ.get("CC") == "clang":
+    extra_compile_args.append("-flto=thin")
+    extra_link_args.append("-flto=thin")
     extra_link_args.append("-fuse-ld=lld")
+
 
 extensions = [
     Extension(

@@ -1,3 +1,7 @@
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
+
 # cython: boundscheck=False, wraparound=False, freethreading_compatible=True
 
 from libc.stdlib cimport malloc
@@ -39,15 +43,15 @@ cdef inline bint binary_search(int codepoint) noexcept:
 
 cpdef limit_width_wch(str text, int max_width):
     cdef int total_width = 0
-    cdef int character, char_width
+    cdef int codepoint, char_width
     cdef Py_ssize_t i, n = len(text)
 
     for i in range(n):
-        character = ord(text[i])
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(text[i])
+        if 0x20 <= codepoint < 0x7f:
             char_width = 1
         else:
-            char_width = 1 + binary_search(character)
+            char_width = 1 + binary_search(codepoint)
         if total_width + char_width > max_width:
             return text[:i], total_width
         total_width += char_width
@@ -57,31 +61,31 @@ cpdef limit_width_wch(str text, int max_width):
 
 cpdef len_wch(str text):
     cdef int total_width = 0
-    cdef int character
+    cdef int codepoint
     cdef Py_ssize_t i, n = len(text)
 
     for i in range(n):
-        character = ord(text[i])
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(text[i])
+        if 0x20 <= codepoint < 0x7f:
             total_width += 1
         else:
-            total_width += 1 + binary_search(character)
+            total_width += 1 + binary_search(codepoint)
 
     return total_width
 
 
 cpdef Py_ssize_t split_index_wch(str text, int max_width):
     cdef int width = 0
-    cdef int character
+    cdef int codepoint
     cdef Py_ssize_t i, n = len(text)
     cdef int w
 
     for i in range(n):
-        character = ord(text[i])
-        if 0x20 <= character < 0x7f:
+        codepoint = ord(text[i])
+        if 0x20 <= codepoint < 0x7f:
             w = 1
         else:
-            w = 1 + binary_search(character)
+            w = 1 + binary_search(codepoint)
         if width + w > max_width:
             return i
         width += w
@@ -109,7 +113,7 @@ cpdef list fix_line_format(list line_format, str text):
     cdef list wide_positions, corrected
     cdef Py_ssize_t i, pos
     cdef Py_ssize_t start, end, start_shift, end_shift
-    cdef int color, character
+    cdef int color, codepoint
     cdef object ch
 
     if len(line_format) <= 1:
@@ -117,8 +121,8 @@ cpdef list fix_line_format(list line_format, str text):
 
     wide_positions = []
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if (character < 0x20 or character >= 0x7f) and binary_search(character):
+        codepoint = ord(ch)
+        if (codepoint < 0x20 or codepoint >= 0x7f) and binary_search(codepoint):
             wide_positions.append(i)
     if not wide_positions:
         return line_format
@@ -136,7 +140,7 @@ cpdef list fix_map_ranges(list map_ranges, str text):
     cdef list wide_positions, corrected
     cdef Py_ssize_t i, pos
     cdef Py_ssize_t start, end, start_shift, end_shift
-    cdef int character
+    cdef int codepoint
     cdef object ch
     cdef object data
 
@@ -145,8 +149,8 @@ cpdef list fix_map_ranges(list map_ranges, str text):
 
     wide_positions = []
     for i, ch in enumerate(text):
-        character = ord(ch)
-        if (character < 0x20 or character >= 0x7f) and binary_search(character):
+        codepoint = ord(ch)
+        if (codepoint < 0x20 or codepoint >= 0x7f) and binary_search(codepoint):
             wide_positions.append(i)
     if not wide_positions:
         return map_ranges
@@ -158,3 +162,28 @@ cpdef list fix_map_ranges(list map_ranges, str text):
         corrected.append([start + start_shift, end + end_shift, data])
 
     return corrected
+
+
+from cpython.unicode cimport PyUnicode_New, PyUnicode_WriteChar
+
+def replace_wide(str text, str replacement):
+    if not text:
+        return ""
+
+    cdef Py_ssize_t length = len(text)
+    cdef Py_ssize_t i
+    cdef int codepoint
+    cdef int rep_codepoint = 0
+    cdef str result = PyUnicode_New(length, 1114111)
+    if replacement:
+        rep_codepoint = ord(replacement)
+
+    for i in range(length):
+        codepoint = text[i]
+        if codepoint < 0x20 or codepoint >= 0x7f:
+            PyUnicode_WriteChar(result, i, codepoint)
+        if binary_search(codepoint) and rep_codepoint:
+            PyUnicode_WriteChar(result, i, rep_codepoint)
+        else:
+            PyUnicode_WriteChar(result, i, codepoint)
+    return result

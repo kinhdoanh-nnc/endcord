@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import base64
 import http.client
@@ -25,9 +24,8 @@ except ImportError:
         import json
 
 import socks
-from google.protobuf.json_format import MessageToDict, ParseDict
 
-from endcord import peripherals, user_frecency_pb2, user_settings_pb2, utils
+from endcord import peripherals, protobuf, protobuf_schemata, utils
 from endcord.message import prepare_messages
 
 DISCORD_HOST = "discord.com"
@@ -596,12 +594,11 @@ class Discord():
         if status == 200:
             data = json.loads(data)["settings"]
             if num == 1:
-                decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data))
+                self.protos[0] = protobuf.parse_message(base64.b64decode(data), protobuf_schemata.USER_SETTINGS)
             elif num == 2:
-                decoded = user_frecency_pb2.UserFrecency.FromString(base64.b64decode(data))
+                self.protos[1] = protobuf.parse_message(base64.b64decode(data), protobuf_schemata.USER_FRECENCY)
             else:
                 return {}
-            self.protos[num-1] = MessageToDict(decoded)
             return self.protos[num-1]
         log_api_error(data, status, "get_settings_proto")
         return False
@@ -616,7 +613,8 @@ class Discord():
             self.get_settings_proto(num)
         self.protos[num-1].update(data)
         if num == 1:
-            encoded = base64.b64encode(ParseDict(data, user_settings_pb2.UserSettings()).SerializeToString()).decode("utf-8")
+            logger.info(data)
+            encoded = base64.b64encode(protobuf.serialize_message(data, protobuf_schemata.USER_SETTINGS)).decode("utf-8")
         elif num == 2:
             return False   # unsupported
         else:
@@ -1866,18 +1864,18 @@ class Discord():
         return self.total_requests, ping_time
 
 
-    def get_pfp(self, user_id, avatar_id, size=None, save_path=None, keepalive=False):
+    def get_pfp(self, user_id, avatar_id, size=None, img_type="webp", save_path=None, keepalive=False):
         """Download pfp for specified user"""
         if size is not None:
             size = min(max(size, 16), 4096)
         if not save_path:
             save_path = peripherals.temp_path
-        destination = os.path.join(os.path.expanduser(save_path), f"{avatar_id}.webp")
+        destination = os.path.join(os.path.expanduser(save_path), f"{avatar_id}.{img_type}")
         if os.path.exists(destination):
             return destination
 
         message_data = None
-        url = f"/avatars/{user_id}/{avatar_id}.webp?size={size}"
+        url = f"/avatars/{user_id}/{avatar_id}.{img_type}?size={size}"
         header = {
             "Origin": f"https://{self.host}",
             "Sec-Fetch-Mode": "no-cors",

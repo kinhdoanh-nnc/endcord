@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 SEARCH_HELP_TEXT = """from:user_id
 mentions:user_id
@@ -49,7 +48,7 @@ COMMAND_ASSISTS = (
     ("pin_message - pin selected message to current channel", "pin_message"),
     ("push_button [num/name] - push button on interactive app message", "push_button"),
     ("string_select [string] - select string on interactive app message", "string_select"),
-    ("toggle_tab - toggle tabbed (pinned) state of current channel", "toggle_tab"),
+    ("toggle_tab *<#[channel_id]> - toggle tabbed state for selected or specified channe;", "toggle_tab"),
     ("switch_tab [num/next/prev] - switch to specified tab by its number", "switch_tab"),
     ("remove_all_tabs - remove all tabbed channels", "remove_all_tabs"),
     ("vote [num] - vote for specified answer index on active poll message", "vote"),
@@ -57,16 +56,15 @@ COMMAND_ASSISTS = (
     ("record_voice_message [cancel] - start/stop/cancel recording voice message", "record_voice_message"),
     ("insert_timestamp [time]/[tiampmest] - insert timestamp, use assist for more options", "insert_timestamp"),
     ("set_notifications *<#[channel_id]> ... - show and modify server/channel notification settings", "set_notifications"),
-    ("check_standing - check account standing, anything non-100 is concerning", "check_standing"),
     ("custom_status [string] - set custom status text", "custom_status"),
     ("custom_status_emoji [emoji] - set custom status emoji", "custom_status_emoji"),
     ("custom_status_remove - remove custom status", "custom_status_remove"),
     ("toggle_afk - toggle afk state; if afk, mobile devices will receive notifications", "toggle_afk"),
-    ("block *ignore <@[user_id]> - block/ignore user", "block"),
-    ("unblock *ignore <@[user_id]> - unblock/unignore user", "unblock"),
+    ("block *ignore *<@[user_id]> - toggle block/ignore provided user or message", "block"),
     ("toggle_blocked_messages - toggle showing messages from blocked users in chat", "toggle_blocked_messages"),
     ("view_emoji *[emoji/num] - download specified custom emoji and show it in media player", "view_emoji"),
     ("favorite_emoji [emoji] - add/remove emoji from local favorites", "favorite_emoji"),
+    ("play_in_native *[num] - play selected attachment in native media player", "play_in_native"),
     ("voice_start_call - start voice call in currently open DM", "voice_start_call"),
     ("voice_accept_call - accept incoming voice call", "voice_accept_call"),
     ("voice_leave_call - leave current voice call", "voice_leave_call"),
@@ -82,6 +80,8 @@ COMMAND_ASSISTS = (
     ("resize_popup_window [num/-1/+1] - resize extra window", "resize_popup_window"),
     ("collapse_all_except *[option] - collapse all servers in tree except specific [option]", "collapse_all_except"),
     ("tree_select *[server/channel], *[next/prev] - select next or previous server or channel in tree", "tree_select"),
+    ("check_standing - check account standing, anything non-100 is concerning", "check_standing"),
+    ("game_detection_blacklist [game] - toggle blacklist for games detected in past 7 days", "game_detection_blacklist"),
     ("send_message * - see commands documentation for options", "send_message"),
     ("redraw - redraw UI if it ever gets messed up", "redraw"),
     ("switch_profile [name/number] - switch to different local profile", "switch_profile"),
@@ -93,7 +93,57 @@ COMMAND_ASSISTS = (
     ("show_stats - show current client stats", "show_stats"),
     ("dump_chat - dump current chat to unique json file", "dump_chat"),
     ("dump_roles - dump current server roles to unique json file", "dump_roles"),
-    ("game_detection_blacklist [game] - toggle blacklist for games detected in past 7 days", "game_detection_blacklist"),
     ("set [key] = [value] - change settings and save them.", "set"),
+    ("about - show info about endcord", "about"),
     ("quit - quit endcord", "quit"),
 )
+
+ABOUT = """# ABOUT
+Endcord %ver
+Feature rich discord TUI client
+Official source:
+https://github.com/sparklost/endcord
+
+# CREDITS
+Created by SparkLost
+Copyright (C) 2025-%year SparkLost. All Rights Reserved.
+
+# BUILD INFO
+%build
+
+# DISCLAIMER
+Using third-party client is against Discord's Terms of Service and may cause your account to be banned!
+Use endcord at your own risk!
+
+
+# LICENSE
+Copyright (C) 2025-%year SparkLost. All Rights Reserved.
+
+"Software" refers to the source code, documentation, and all associated files
+in this repository.
+"Unmodified" means the Software in its original form, as published by the
+copyright holder, with no modifications, additions or deletions.
+"Binary" means any compiled or otherwise transformed version of the Software
+produced directly from Unmodified source code without intermediate modification.
+"you" means the licensee of rights set out in this license.
+"Review" means to access, read, analyze, test the Software without copying,
+storing, or redistributing it.
+
+You are permitted to:
+  1. Review the Software.
+  2. Redistribute the Unmodified Software, provided this license and copyright
+     notice are included in full.
+  3. Compile and redistribute Binaries built from the Unmodified Software,
+     provided this license and copyright notice are included in full.
+
+You may not:
+  1. Modify the Software and distribute the modified version in any form.
+  2. Use the Software or any part of it in another project without explicit
+     written permission from the copyright holder.
+  3. Sublicense or sell the Software or Binaries.
+
+THIS SOFTWARE IS PROVIDED "AS-IS, WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHOR AND COPYRIGHT HOLDER BE LIABLE FOR ANY DAMAGE,
+EFFECT, INTERFERENCE OR CLAIM CAUSED DIRECTLY OR INDIRECTLY BY THIS SOFTWARE."""

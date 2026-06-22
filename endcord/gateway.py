@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import base64
 import gc
@@ -28,9 +27,8 @@ except ImportError:
 
 import socks
 import websocket
-from google.protobuf.json_format import MessageToDict
 
-from endcord import debug, perms, user_settings_pb2
+from endcord import debug, perms, protobuf, protobuf_schemata
 from endcord.message import is_relevant_message, prepare_message
 
 DISCORD_HOST = "discord.com"
@@ -924,8 +922,7 @@ class Gateway():
                     ready_time_mid = time.time()
                     # get user settings
                     if "user_settings_proto" in data and not self.legacy:
-                        decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["user_settings_proto"]))
-                        self.user_settings_proto = MessageToDict(decoded)
+                        self.user_settings_proto = protobuf.parse_message(base64.b64decode(data["user_settings_proto"]), protobuf_schemata.USER_SETTINGS)
                     else:
                         self.legacy = True
                         old_user_settings = data["user_settings"]
@@ -933,13 +930,13 @@ class Gateway():
                             "status": {
                                 "status": old_user_settings.get("status", "online"),
                             },
-                            "guildFolders": {
-                                "guildPositions": old_user_settings.get("guild_positions"),
+                            "guild_folders": {
+                                "guild_positions": old_user_settings.get("guild_positions"),
                             },
                         })
                         self.user_settings_proto = old_user_settings
                         if old_user_settings.get("custom_status"):
-                            self.user_settings_proto["status"]["customStatus"] = old_user_settings["custom_status"]
+                            self.user_settings_proto["status"]["custom_tatus"] = old_user_settings["custom_status"]
                     self.proto_changed = True
                     time_log_string += f"    protobuf - {round((time.time() - ready_time_mid) * 1000, 3)} ms\n"
                     ready_time_mid = time.time()
@@ -1242,7 +1239,7 @@ class Gateway():
                         self.activities.append([guild_id, {}])   # [guild_id, member_lists]
                         guild_index = -1
                     for memlist in data["ops"]:
-                        # keeping only necessary data, because the rest can be fetched with discord.get_user_guild()
+                        # keeping only necessary data to reduce ram usage
                         if memlist["op"] == "SYNC":
                             if memlist["range"][0] != 0:
                                 # keeping only first chunk (first 99)
@@ -1253,23 +1250,22 @@ class Gateway():
                                     members_sync.append({"group": item["group"]["id"]})
                                 else:
                                     member_data = item["member"]
-                                    ## unused for now
-                                    # custom_status = None
-                                    # activities = []
-                                    # for activity in member_data["presence"]["activities"]:
-                                    #     if activity["type"] == 4:
-                                    #         custom_status = activity.get("state", "")
-                                    #     elif activity["type"] in (0, 2):
-                                    #         # assets = activity.get("assets", {})
-                                    #         activities.append({
-                                    #             "type": activity["type"],
-                                    #             "name": activity["name"],
-                                    #             "state": activity.get("state"),
-                                    #             "details": activity.get("details"),
-                                    #             # "small_text": assets.get("small_text"),
-                                    #             # "large_text": assets.get("large_text"),
-                                    #             "start": int(activity["timestamps"].get("start", 0)/1000) if "timestamps" in activity else None,
-                                    #         })
+                                    custom_status = None
+                                    activities = []
+                                    for activity in member_data["presence"]["activities"]:
+                                        if activity["type"] == 4:
+                                            custom_status = activity.get("state", "")
+                                        elif activity["type"] in (0, 2):
+                                            # assets = activity.get("assets", {})
+                                            activities.append((   # using tuple to save on ram
+                                                activity["type"],
+                                                activity["state"] if activity["type"] == 2 and "state" in activity else activity["name"],
+                                                # int(activity["timestamps"].get("start", 0)/1000) if "timestamps" in activity else None,
+                                                # activity.get("state"),
+                                                # activity.get("details"),
+                                                # assets.get("small_text"),
+                                                # assets.get("large_text"),
+                                            ))
                                     members_sync.append({
                                         "id": member_data["user"]["id"],
                                         "username": member_data["user"]["username"],
@@ -1277,8 +1273,8 @@ class Gateway():
                                         "nick": member_data["nick"],
                                         "roles": member_data["roles"],
                                         "status": member_data["presence"]["status"],
-                                        # "custom_status": custom_status,
-                                        # "activities": activities,
+                                        "custom_status": custom_status,
+                                        "activities": activities,
                                     })
                             self.activities[guild_index][1][list_id] = [0, members_sync]
                             self.activities_changed.append(guild_id)
@@ -1307,15 +1303,15 @@ class Gateway():
                                         custom_status = activity.get("state", "")
                                     elif activity["type"] in (0, 2):
                                         # assets = activity.get("assets", {})
-                                        activities.append({
-                                            "type": activity["type"],
-                                            "name": activity["name"],
-                                            "state": activity.get("state"),
-                                            "details": activity.get("details"),
-                                            # "small_text": assets.get("small_text"),
-                                            # "large_text": assets.get("large_text"),
-                                            "start": int(activity["timestamps"].get("start", 0)/1000) if "timestamps" in activity else None,
-                                        })
+                                        activities.append((   # using tuple to save on ram
+                                            activity["type"],
+                                            activity["state"] if activity["type"] == 2 and "state" in activity else activity["name"],
+                                            # int(activity["timestamps"].get("start", 0)/1000) if "timestamps" in activity else None,
+                                            # activity.get("state"),
+                                            # activity.get("details"),
+                                            # assets.get("small_text"),
+                                            # assets.get("large_text"),
+                                        ))
                                 member_id = member_data["user"]["id"]
                                 ready_data = {
                                     "id": member_id,
@@ -1324,8 +1320,8 @@ class Gateway():
                                     "nick": member_data["nick"],
                                     "roles": member_data["roles"],
                                     "status": member_data["presence"]["status"],
-                                    # "custom_status": custom_status,
-                                    # "activities": activities,
+                                    "custom_status": custom_status,
+                                    "activities": activities,
                                 }
                                 if memlist["op"] == "UPDATE":
                                     try:
@@ -1468,8 +1464,7 @@ class Gateway():
                 elif optext == "USER_SETTINGS_PROTO_UPDATE":
                     if data["partial"] or data["settings"]["type"] != 1:
                         continue
-                    decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["settings"]["proto"]))
-                    self.user_settings_proto = MessageToDict(decoded)
+                    self.user_settings_proto = protobuf.parse_message(base64.b64decode(data["settings"]["proto"]), protobuf_schemata.USER_SETTINGS)
                     self.proto_changed = True
 
                 elif optext == "USER_GUILD_SETTINGS_UPDATE":
@@ -1891,9 +1886,14 @@ class Gateway():
                 break
 
             elif opcode == 9:
-                if response["d"]:
-                    logger.info("Session invalidated, reconnecting")
+                if not self.ready:
+                    logger.error("Failed initializing a session: There is probably a server-side error")
+                    self.state = 3
                     break
+                logger.info("Session invalidated, reconnecting")
+                if response["d"]:
+                    self.resumable = True
+                break
 
             elif opcode == 10:
                 self.heartbeat_interval = int(response["d"]["heartbeat_interval"])
@@ -2096,7 +2096,7 @@ class Gateway():
             "op": 3,
             "d": {
                 "status": status,
-                "afk": afk,
+                "afk": bool(afk),
                 "since": 0,
                 "activities": all_activities,
             },
@@ -2448,7 +2448,7 @@ class Gateway():
 
 
     def get_member_roles(self):
-        """Get member roles, updated regularly."""
+        """Get member roles, updated regularly"""
         if self.roles_changed:
             temp = self.roles_changed
             self.roles_changed = False

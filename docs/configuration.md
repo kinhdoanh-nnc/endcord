@@ -3,7 +3,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 
 ### Main
 - `theme = None`  
-    Custom theme path, or name of file in `Themes` directory.  Set to None to use theme from `config.ini` `[theme]` section or defaults.
+    Custom theme path, or name of file in `Themes` directory.  Set to `None` to use theme from `config.ini` `[theme]` section or defaults.
 - `extensions = True`  
     Enable extensions.
 - `rpc = True`  
@@ -14,10 +14,10 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Enable vim-like mode.
 - `limit_chat_buffer = 100`  
     Number of messages kept in chat buffer. Initial buffer is 50 messages and is expanded in scroll direction. Limit: 50-1000. Larger value will cause longer chat updates.  
-- `limit_channel_cache = 5`  
-    How many previous channel chats are kept in cache. For each channel `download_msg` number of messages are kept.  Set to 0 to disable caching.  
+- `limit_channel_cache = 10`  
+    How many previous channel chats are kept in cache. For each channel `download_msg` number of messages are kept.  Set to `0` to disable caching.  
     Tabbed channels are counted as "pinned" cached channels.
-    Larger limit_channel_cache value will cause more RAM usage.
+    Larger limit_channel_cache value will cause more RAM and CPU usage.
 - `download_msg = 25`  
     Number of messages downloaded in chunks for updating chat. Discord default is 25. Limit: 20-100. Larger values will cause longer waiting time when switching channel and loading chat chunks.
 - `convert_timezone = True`  
@@ -27,8 +27,10 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 - `desktop_notifications = True`  
     Allow sending desktop notifications when user is pinged/mentioned.  
     Set to `2` to disable notification but keep sound, only `custom_notification_sound` will be used.
-- `notification_in_active = True`  
-    Allow sending desktop notifications for mentions even in active channel.
+- `idle_timeout = 10`  
+    After how many **minutes** to automatically switch to idle status. Set to `None` or `0` to disable. Note: this only detects when window is **not focused**.
+- `notification_when_focused = False`  
+    Wether to receive desktop notifications when terminal is not focused.
 - `remove_previous_notification = True`  
     Remove previous desktop notification thats coming from same DM/Channel.  
 - `ack_throttling = 5`  
@@ -43,6 +45,8 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Remember previous state across session. This include: last opened channel, tree layout, muted state, folder names, tabs, games blacklist.
 - `remember_tabs = True`  
     Remember tabbed channels across sessions. Only if `remember_state` is True.
+- `new_tab_at_end = False`  
+    Add tabbed channels at end of the tab line, or insert them after currently active tab.
 - `reply_mention = True`  
     Ping someone by default when replying.
 - `cache_typed = True`  
@@ -54,9 +58,9 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
  - `assist_swap_binding = True`  
     Wether to swap `chat_up` and `chat_down` with `extra_up` and `extra_down` when popup window is open.
 - `cursor_on_time = 0.7`  
-    Time in seconds the cursor stays ON. Set to None or 0 to disable cursor blinking.
+    Time in seconds the cursor stays ON. Set to `None` or `0` to disable cursor blinking.
 - `cursor_off_time = 0.5`  
-    Time in seconds the cursor stays OFF. Set to None or 0 to disable cursor blinking.
+    Time in seconds the cursor stays OFF. Set to `None` or `0` to disable cursor blinking.
 - `tab_spaces = 4`  
     How many spaces are inserted when pressing tab button or loading tab character from external editor.
 - `blocked_mode = 1`  
@@ -70,7 +74,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Whether to keep deleted messages in the chat, with different color, or remove them.
 - `limit_cache_deleted = 30`  
     Limit number of cached deleted messages per channel.
-- `max_thumb_cache_age = 14`  
+- `max_thumb_cache_age = 7`  
     How long to keep cached thumbs for inline images, in days. Set `0` to clear on each new run.  
 - `tree_show_folders = True`  
     Whether to show or hide server folders in tree.
@@ -99,7 +103,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 - `aspell_mode = "normal"`  
     [Aspell](http://aspell.net/) filter mode.  
     Available options: `ultra` / `fast` / `normal` / `slow` / `bad-spellers`  
-    Set to None to disable spell checking.  
+    Set to `None` to disable spell checking.  
     More info [here](http://aspell.net/man-html/Notes-on-the-Different-Suggestion-Modes.html#Notes-on-the-Different-Suggestion-Modes).  
 - `aspell_lang = "en_US"`  
     Language dictionary for aspell.  
@@ -149,7 +153,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 - `limit_command_history = 50`  
     Maximum number of commands stored in history. File is `command_history.json` in config dir.
 - `game_detection_download_delay = 7`  
-    How often detectable games list will be checked for updates. Value is in days. Set to 0 to check on each run.
+    How often detectable games list will be checked for updates. Value is in days. Set to `0` to check on each run.
 - `external_editor = None`  
     Command or path to executable for launching external editor. Set to `None` to use system default.
 - `calls = True`  
@@ -158,7 +162,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     This is silence detection threshold for sound transmitted in voice calls. Value is in dB.  
     If system mic volume is too low, actual sound may be detected as silence, so decrease this value until voice can be heard properly.  
     Increase it if endcord is constantly sending noise when its silence. Or decrease mic volume and increase input volume in endcord.  
-    Set to 0 to disable silence detection (sound will be constantly sent and will use more bandwidth).
+    Set to `0` to disable silence detection (sound will be constantly sent and will use more bandwidth).
 - `downloads_path = None`  
     Path to custom downloads directory. Set to `None` to use system default.
 - `notifications_pfp = True`  
@@ -166,15 +170,15 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     If enabled will slightly delay notification if picture is being downloaded. Pictures are cached in system default cache dir.  
     Set to number to change maximum picture resolution, eg. `notifications_pfp = 128` will always download image with resolution 128x128 or worse.  
 - `linux_notification_sound = "message"`  
-    Sound played when notification is displayed. Linux only. Set to None to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension.
+    Sound played when notification is displayed. Linux only. Set to `None` to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension.
 - `custom_notification_sound = None`  
     Path to audio file played when notification is sent. Set to `None` to disable.
 - `linux_ringtone_incoming = "phone-incoming-call"`  
-    Sound played when there is incoming call. Linux only. Set to None to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension. Set this and custom_ringtone_incoming to `None` to disable sound entirely.
+    Sound played when there is incoming call. Linux only. Set to `None` to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension. Set this and custom_ringtone_incoming to `None` to disable sound entirely.
 - `custom_ringtone_incoming = None`  
     Path to audi file played when there is incoming call. Set to `None` to disable. The file will be played in loop.
 - `linux_ringtone_outgoing = "phone-outgoing-call"`  
-    Sound played when there is outgoing call. Linux only. Set to None to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension.
+    Sound played when there is outgoing call. Linux only. Set to `None` to disable. Sound names can be found in `/usr/share/sounds/freedesktop/stereo`, without extension.
 - `custom_ringtone_outgoing = None`  
     Path to audio file played when there is outgoing call. Set to `None` to disable. The file will be played in loop.
 - `custom_media_player = None`  
@@ -221,7 +225,7 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Be warned! Using proxy (especially TOR) might make you more suspicious to discord.  
     Voice and video calls will only work with socks5 proxy and it must support UDP ASSOCIATE.  
 - `custom_host = None`  
-    Custom host to connect to, like `old.server.spacebar.chat`. Set to None to use default host (`discord.com`)
+    Custom host to connect to, like `old.server.spacebar.chat`. Set to `None` to use default host (`discord.com`)
 - `capbilities = None`  
     DO NOT CHANGE, unless you know what you're doing. This might cause some features to not work or client to get unstable.  
     If bot token is used, then this will be used as `intents` parameter instead. See [discord bot documentation](https://discord.com/developers/docs/events/gateway#gateway-intents).  
@@ -258,19 +262,22 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Formatting for single reaction string. Reactions string is assembled by joining these strings with `reactions_separator` in between. See [format_one_reaction](#format_one_reaction) for more info.
 - `format_timestamp = "%H:%M"`  
     Format for timestamps in messages. Same as [datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)
-- `format_status_line_l = " %global_name (%username) - %status %afk %unreads %action %typing"`  
-    Formatting for left side of status line. See [format_status](#format_status) for more info. Set to None to disable.
+- `format_status_line_l = " ⠀%status_dot %nick %warn_state %unreads %action %typing"`  
+    Formatting for left side of status line. See [format_status](#format_status) for more info. Set to `None` to disable.  
+    This and other line formats will replace trailing, heading and 3 or more space characters with "middle line" if used in standard mode (not compact). This can be avoided by using Braille Pattern Blank character: `⠀`.  
 - `format_status_line_r = "%vim_mode %slowmode"`  
     Formatting for right side of status line. See [format_status](#format_status) for more info.
-- `format_title_line_l = " %server: %channel"`  
-    Formatting for left side of title line. See [format_status](#format_status) for more info. Set to None to disable.
-- `format_title_line_r = "%tabs"`  
+- `format_title_line_l = " %server: %channel_no_tab"`  
+    Formatting for left side of title line. See [format_status](#format_status) for more info. Set to `None` to disable.
+- `format_title_line_r = None`  
     Formatting for right side of title line. See [format_status](#format_status) for more info.
+- `format_subtitle_line = "─%tabs"`  
+    Formatting for subtitle line - drawn bellow title line, only if there is content. See [format_status](#format_status) for more info.
 - `format_title_tree = " endcord  %task"`  
-    Formatting for channel tree title line. See [format_status](#format_status) for more info. Set to None to disable.
+    Formatting for channel tree title line. See [format_status](#format_status) for more info. Set to `None` to disable.
 - `format_rich = "%type %name - %state - %details"`  
     Formatting for rich presence string used in `format_status`. See [format_rich](#format_rich) for more info.
-- `format_tabs = "%num - %name"`  
+- `format_tabs = "%name"`  
     Formatting for tabs list string used in `format_status`. See [format_tabs](#format_tabs) for more info.
 - `format_prompt = "[%channel] > "`  
     Formatting for prompt line. See [format_prompt](#format_prompt) for more info.
@@ -290,10 +297,10 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     A character used to draw scrollbar on the right side of the chat.
 - `reactions_separator = " "`  
     A string placed between two reactions.
-- `tabs_separator = " | "`  
+- `tabs_separator = "|"`  
     A string placed between two tabs.
 - `chat_date_separator = "─"`  
-    A single character used to draw horizontal line for separating messages sent on different days. Set to None to disable date separator.
+    A single character used to draw horizontal line for separating messages sent on different days. Set to `None` to disable date separator.
 - `format_date = " %B %d, %Y "`  
     Format for timestamps in `chat_date_separator`. Same as [datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
 - `limit_username = 10`  
@@ -306,10 +313,10 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
     Limit to the thread name string length.
 - `limit_thread_name = 0`  
     Limit to `%username`, `%global_name`, `%server` and `%channel` length in `format_prompt`.
-- `limit_tab_len = 10`  
-    Limit to individual tab length.
-- `limit_tabs_string = 60`  
-    Limit to `%tabs` length in `format_status`.
+- `limit_tab_len = 20`  
+    Limit to individual tab length. Set to `0` to disable.
+- `limit_tabs_string = 0`  
+    Limit to `%tabs` length in `format_status`. Set to `0` to disable.
 - `tree_drop_down_vline = "│"`  
     A single character used to draw vertical line in tree drop down menus. Also used to draw vertical line separating channel tree and the chat in compact mode.
 - `tree_drop_down_hline = "─"`  
@@ -364,6 +371,10 @@ First `[fg, bg, attr]` is base color for whole context. If `bg` is -1, `bg` from
 Every next list has additional `start` and `end`- indexes on a line where color is applied. If `bg` is -2, `bg` from base color is used. -1 is terminal default color. Same for `fg`.  
 - `color_default = [-1, -1]`  
     Base color formatting for text. No attribute.
+- `color_green = [46, -1]`  
+- `color_orange = [208, -1]`  
+- `color_red = [196, -1]`  
+    Colors for green/orange/red elements in various windows and lines.
 - `color_chat_mention = [223, 234]`  
     Color for highlighted messages containing mentions (reply with ping included) and mention roles.
 - `color_chat_blocked = [242, -1]`  
@@ -389,9 +400,11 @@ Every next list has additional `start` and `end`- indexes on a line where color 
 - `color_status_line = [233, 255]`  
     Color for status line.
 - `color_extra_line = [233, 245]`  
-    Color for extra line, drawn above status line.
+    Color for extra line, drawn above status line. Used only in compact mode.
 - `color_title_line = [233, 255]`  
-    Color for chat title line and tree title line.
+    Color for chat title line and tree title line. Used only in compact mode.
+- `color_subtitle_line = [245, -1]`  
+    Color for subtitle line.
 - `color_extra_window = [-1, -1]`  
     Color for extra window body.
 - `color_extra_window_low = [245, -1]`  
@@ -408,10 +421,13 @@ Every next list has additional `start` and `end`- indexes on a line where color 
     Color for misspelled words in input line.
 - `color_tree_default = [255, -1]`  
     Base color for tree components. No attribute.
+- `color_tree_category = [153, -1]`
+- `color_tree_server = [153, -1]`
 - `color_tree_selected = [233, 255]`  
 - `color_tree_muted = [242, -1]`  
 - `color_tree_active = [255, 234]`  
-- `color_tree_unseen = [255, -1, "b"]`  
+- `color_tree_unseen = [-2, -2, "b"]`  
+    Set fg and bg to -2 so it only adds attribute to color_tree_category and color_tree_server, instead of replacing color.
 - `color_tree_mentioned = [197, -1]`  
 - `color_tree_active_mentioned = [197, 234]`  
 - `color_tree_selected_mentioned = [124, 255]`  
@@ -474,7 +490,9 @@ Note: everything after `%content` may be pushed to newline.
 ### format_status
 - `%global_name` - my global name
 - `%username` - my username
-- `%status` - Discord status if online, otherwise 'connecting' or 'offline'
+- `%status` - Discord status if online, otherwise 'connecting', 'offline' or 'error'
+- `status_dot` - Colored character from `tree_dm_status`
+- `%warn_state` - `[connecting]`, `[OFFLINE]`, `[ERROR]`, `[AFK]`, or nothing
 - `%custom_status` - custom status string
 - `%custom_status_emoji` - custom status emoji or emoji name
 - `%pronouns` - my pronouns
@@ -483,11 +501,11 @@ Note: everything after `%content` may be pushed to newline.
 - `%rich` - my rich presence, replaced with `format_rich`
 - `%server` - currently viewed server
 - `%channel` - currently viewed channel
+- `%channel_no_tab` - currently viewed channel, shown only if there are no tabs
 - `%action` - warning for replying/editing/deleting message
 - `%task` - currently running slow task (reconnecting, downloading chat...)
 - `%tabs` - all tabs formatted with `format_tabs` then joined with `tabs_separator`
 - `%slowmode` - `Slowmode: hh:mm:ss` if slowmode is enabled, otherwise its hidden
-- `%afk` - `[AFK]` while afk status is being sent from this client
 - `%app_name` - default is `endcord`, can be changed with `ENDCORD_APP_NAME` environment variable
 - `%vim_mode` - `[--INSERT--]` or `[--NORMAL--]` when `vim_mode` is ON
 

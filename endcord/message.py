@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import re
 from datetime import datetime
@@ -292,7 +291,7 @@ def prepare_message(message):
     if component_info:
         message_dict["component_info"] = component_info
     if "bot" in message["author"]:
-        message_dict["bot"] = 1 + bool(message["flags"] & 64)   # 2 if ephemeral message
+        message_dict["bot"] = 1 + bool(message.get("flags", 0) & 64)   # 2 if ephemeral message
     if "webhook_id" in message:
         message_dict["webhook"] = True
     return message_dict

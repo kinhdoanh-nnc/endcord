@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import curses
 import importlib.util
@@ -110,6 +109,8 @@ def check_color_formatted(color_format):
     for color in color_format_new[1:]:
         if color[0] == -2:
             color[0] = color_format_new[0][0]
+        color[2] = max(color[2], 0)
+        color[3] = max(color[3], 0)
     return color_format_new
 
 

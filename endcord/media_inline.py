@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import curses
 import glob
@@ -50,7 +49,7 @@ def freed_vertical_segments(old_rects, new_rects_y):
 class InlineMedia:
     """Main extension class"""
 
-    def __init__(self, discord, tui, config):
+    def __init__(self, discord, tui, config, colors_formatted, color_mention):
         self.discord = discord
         self.tui = tui
         self.use_blocks = config["media_use_blocks"]
@@ -59,6 +58,8 @@ class InlineMedia:
             self.inline_media_quality = "low"
         self.truecolor = config["media_truecolor"]
         self.saturation = config["media_saturation"]
+        self.mention_color = colors_formatted[12][0][0]
+        self.mention_color_esc = f"{ESC}[48;5;{color_mention[1]}m"
         self.run = True
         self.prev_chat_index = None
         self.prev_win_hw = self.tui.screen_hw
@@ -87,7 +88,7 @@ class InlineMedia:
     def stop(self):
         """Stop all threads"""
         self.run = False
-        self.download_queue.put([None] * 8)
+        self.download_queue.put([None] * 9)
 
 
     def force_redraw(self):
@@ -96,7 +97,7 @@ class InlineMedia:
         self.draw_images()
 
 
-    def update(self, chat_map, messages):
+    def update(self, chat_format, chat_map, messages):
         """Get new data, queue downloads, update caches and trigger forced redraw if needed"""
         images = []
 
@@ -109,6 +110,7 @@ class InlineMedia:
             img_pos = line_map[5][5]
             if not img_pos or len(img_pos) < 4:
                 continue
+            mention = self.mention_color == chat_format[rel_y][0][0]
 
             # collect data
             rel_x, w, embed_idx, h, = img_pos
@@ -127,17 +129,17 @@ class InlineMedia:
             with self.image_cache_lock:
                 if image_id not in self.image_cache:
                     self.force_draw = True
-                    self.image_cache[image_id] = [None, rel_y, rel_x, h, w, draw]
-                elif self.image_cache[image_id][1:] != [rel_y, rel_x, h, w, draw]:
+                    self.image_cache[image_id] = [None, rel_y, rel_x, h, w, draw, mention]
+                elif self.image_cache[image_id][1:-2] != [rel_y, rel_x, h, w]:
                     if self.image_cache[image_id][3] != h or self.image_cache[image_id][4] != w:
                         # make this one redownload because changed dimensions
                         self.image_cache[image_id][0] = None
                     self.force_draw = True
-                    self.image_cache[image_id][1:] = [rel_y, rel_x, h, w, draw]
+                    self.image_cache[image_id][1:] = [rel_y, rel_x, h, w, draw, mention]
 
             # download image if needed
             if image_id not in self.image_cache or self.image_cache[image_id][0] is not None or h != self.image_cache[image_id][2] or w != self.image_cache[image_id][3]:
-                self.download_queue.put((message, embed_idx, image_id, rel_y, rel_x, h, w, draw))
+                self.download_queue.put((message, embed_idx, image_id, rel_y, rel_x, h, w, draw, mention))
             images.append(image_id)
 
         # clear cache
@@ -157,34 +159,38 @@ class InlineMedia:
             return
         if self.tui.disable_drawing:
             return
+
         if self.prev_win_hw != self.tui.screen_hw:
             self.prev_win_hw = self.tui.screen_hw
             self.force_redraw()
         drawn_areas = []
-        time.sleep(0.0001)   # delay for clear_images to flush
+        time.sleep(0.001)   # delay for clear_images and curses to flush
+
         with self.tui.lock:
             chat_y, chat_x = self.tui.win_chat.getbegyx()
             chat_h = self.tui.chat_hw[0]
             with self.image_cache_lock:
-                for data, rel_y, rel_x, h, w, draw in self.image_cache.values():
+                subtitle_line = bool(self.tui.win_subtitle_line)
+                for data, rel_y, rel_x, h, w, draw, mention in self.image_cache.values():
                     if not data or not draw:
                         continue
-                    abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title + 1)
+                    abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title - subtitle_line + 1)
                     if abs_y - chat_y <= -h or abs_y > chat_h:
                         continue
                     abs_x = chat_x + rel_x
                     cut_y = 0
                     cut_h = h
                     if abs_y > chat_h - h + 1:
-                        cut_h = min(h, chat_h - abs_y + 1)
-                    if abs_y <= 0:
+                        cut_h = min(h, chat_h - abs_y + 1) + subtitle_line
+                    if abs_y <= subtitle_line:
                         cut_h += abs_y - chat_y
-                        cut_y = -abs_y + 1
+                        cut_y = -abs_y + 1 + subtitle_line
                         abs_y = chat_y
                     # logger.info(("DRAW", (h, w), abs_y, rel_y, cut_h, cut_y))
                     terminal_utils.draw_over_curses("\n".join(data.split("\n")[cut_y:cut_y + cut_h]), abs_y, abs_x)
-                    drawn_areas.append((abs_y, abs_x, cut_h, w))
+                    drawn_areas.append((abs_y, abs_x, cut_h, w, mention))
             self.draw_selection(self.tui.chat_selected)
+
         self.drawn_areas = drawn_areas
         self.prev_chat_index = self.tui.chat_index
         self.prev_chat_hw = self.tui.chat_hw
@@ -202,57 +208,59 @@ class InlineMedia:
         occupied = []
         chat_y, chat_x = self.tui.win_chat.getbegyx()
         chat_h = self.tui.chat_hw[0]
-        for _, rel_y, _, h, w, draw in self.image_cache.values():
+        subtitle_line = bool(self.tui.win_subtitle_line)
+        for _, rel_y, _, h, w, draw, mention in self.image_cache.values():
             if not draw:
                 continue
-            abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title + 1)
+            abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title - subtitle_line + 1)
             cut_h = h
             if abs_y - chat_y <= -h or abs_y >= chat_h:
                 continue
             if abs_y > chat_h - h + 1:
-                cut_h = min(h, chat_h - abs_y + 1)
-            if abs_y <= 0:
-                cut_h += abs_y - chat_y
+                cut_h = min(h, chat_h - abs_y + 1) + subtitle_line
+            if abs_y <= subtitle_line:
+                cut_h += abs_y - chat_y - subtitle_line
                 abs_y = chat_y
-            occupied.append((abs_y, abs_y + cut_h, w))
+            occupied.append((abs_y, abs_y + cut_h, w, mention))
         occupied.sort()
 
         # for each old rect subtract occupied vertical ranges
         to_clear = []
-        for y, x, h, w in self.drawn_areas:
+        for y, x, h, w, mention_old in self.drawn_areas:
             old_end = y + h
             new_y = y
             if force:
-                to_clear.append((new_y, old_end, x, w))
+                to_clear.append((new_y, old_end, x, w, mention_old))
                 continue
-            for occupied_start, occupied_end, occupied_w in occupied:
+            for occupied_start, occupied_end, occupied_w, mention in occupied:
                 if occupied_w < w:   # right of new image that is smaller than old image
-                    to_clear.append((occupied_start, occupied_end, x + occupied_w, w - occupied_w))
+                    to_clear.append((occupied_start, occupied_end, x + occupied_w, w - occupied_w, mention_old or mention))
                 if occupied_end <= new_y:
                     continue
                 if occupied_start >= old_end:
                     break
                 if occupied_start > new_y:   # start segnemt
-                    to_clear.append((new_y, occupied_start, x, w))
+                    to_clear.append((new_y, occupied_start, x, w, mention_old))
                 new_y = max(new_y, occupied_end)
             if new_y < old_end:   # end segment
-                to_clear.append((new_y, old_end, x, w))
+                to_clear.append((new_y, old_end, x, w, mention_old))
         # logger.info(f"DATA:\n  {self.drawn_areas}\n  {occupied}\n  {to_clear}")
 
         # clear segments, if any
         if not to_clear:
             return
         with self.tui.lock:
-            for y_start, y_end, x, w in to_clear:
+            for y_start, y_end, x, w, mention in to_clear:
+                line = (self.mention_color_esc + (" " * w) + RESET) if mention else (" " * w)
                 for row in range(y_start, y_end):
-                    terminal_utils.draw_over_curses(" " * w, row, x)
+                    terminal_utils.draw_over_curses(line, row, x)
         self.drawn_areas = []
 
 
     def get_images(self):
         """Get image y ranges in chat"""
         images = []
-        for data, rel_y, rel_x, h, w, draw in self.image_cache.values():
+        for data, rel_y, rel_x, h, w, draw, _ in self.image_cache.values():
             if not data or not draw:
                 continue
             images.append((rel_y - h + 1, rel_y))
@@ -263,7 +271,7 @@ class InlineMedia:
         """Draaw selection line around images"""
         chat_y, chat_x = self.tui.win_chat.getbegyx()
         chat_h, chat_w = self.tui.chat_hw
-        for data, rel_y, rel_x, h, w, draw in self.image_cache.values():
+        for data, rel_y, rel_x, h, w, draw, _ in self.image_cache.values():
             if not data or not draw:
                 continue
             if pos < rel_y - h + 1 or pos > rel_y:
@@ -273,7 +281,7 @@ class InlineMedia:
                 continue
             line = self.tui.chat_buffer[pos]
             with self.tui.lock:
-                self.tui.win_chat.insstr(line_y, 0, line[:rel_x] + "\n", curses.color_pair(16))
+                self.tui.win_chat.addstr(line_y, 0, line[:rel_x], curses.color_pair(16))   # addstr to avoid "\n" because it removes image
                 self.tui.win_chat.insstr(line_y, rel_x + w, (" " * (chat_w - rel_x - w)) + "\n", curses.color_pair(16))
                 self.tui.win_chat.noutrefresh()
                 self.tui.need_update.set()
@@ -283,7 +291,7 @@ class InlineMedia:
     def downloader(self):
         """Downloader for inline media"""
         while self.run:
-            message, embed_idx, image_id, rel_y, rel_x, h, w, draw = self.download_queue.get()
+            message, embed_idx, image_id, rel_y, rel_x, h, w, draw, mention = self.download_queue.get()
             if not message:
                 break
 
@@ -322,42 +330,58 @@ class InlineMedia:
             img_url = f"{img_url}&format=webp&quality={img_quality}&width={img_w}&height={img_h}"
             img_name = f"{image_id}_{img_w}_{img_h}.webp"
             image_path = self.discord.get_file(img_url, self.image_cache_path, file_name=img_name, cache=True, keepalive=True)
+
+            # use latest data, in case something changed during download
+            with self.image_cache_lock:
+                if image_id not in self.image_cache:
+                    continue
+                _, rel_y, rel_x, h, w, draw, mention = self.image_cache[image_id]
+
             if not image_path:
                 continue
             try:
                 data = self.load_image(image_path, h, w)
-            except Exception as e:
-                logger.info(f"Error processing image: {e}")
-                continue
-            if not data:
-                continue
-            with self.image_cache_lock:
-                if image_id not in self.image_cache:
+                if not data:
                     continue
-                self.image_cache[image_id][0] = data
+                with self.image_cache_lock:
+                    if image_id not in self.image_cache:
+                        continue
+                    # if image changed during load
+                    _, rel_y, rel_x, new_h, new_w, draw, mention = self.image_cache[image_id]
+                    self.image_cache[image_id][0] = data
+                if new_h != h or new_w != w:
+                    data = self.load_image(image_path, new_h, new_w)
+                    h, w = new_h, new_w
+                    with self.image_cache_lock:
+                        self.image_cache[image_id][0] = data
+
+            except Exception as e:
+                logger.warning(f"Error processing image: {e}")
+                continue
             if not draw or self.tui.disable_drawing:
                 continue
 
             # draw
             chat_y, chat_x = self.tui.win_chat.getbegyx()
-            chat_h = self.tui.chat_hw[0]
+            chat_h, chat_w = self.tui.chat_hw
             with self.tui.lock:
+                subtitle_line = bool(self.tui.win_subtitle_line)
                 with self.image_cache_lock:
-                    abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title + 1)
+                    abs_y = chat_h - (rel_y - self.tui.chat_index - self.tui.have_title - subtitle_line + 1)
                     if abs_y - chat_y <= -h or abs_y > chat_h:
                         continue
                     abs_x = chat_x + rel_x
                     cut_y = 0
                     cut_h = h
                     if abs_y > chat_h - h + 1:
-                        cut_h = min(h, chat_h - abs_y + 1)
-                    if abs_y <= 0:
+                        cut_h = min(h, chat_h - abs_y + 1) + subtitle_line
+                    if abs_y <= subtitle_line:
                         cut_h += abs_y - chat_y
-                        cut_y = -abs_y + 1
+                        cut_y = -abs_y + 1 + subtitle_line
                         abs_y = chat_y
                     # logger.info(("INIT", (h, w), abs_y, rel_y, cut_h, cut_y))
                     terminal_utils.draw_over_curses("\n".join(data.split("\n")[cut_y:cut_y + cut_h]), abs_y, abs_x)
-                    self.drawn_areas.append((abs_y, abs_x, cut_h, w))
+                    self.drawn_areas.append((abs_y, abs_x, cut_h, w, mention))
                 self.draw_selection(self.tui.chat_selected)
 
 
@@ -378,7 +402,7 @@ class InlineMedia:
                 img_palette = Image.new("P", (16, 16))
                 img_palette.putpalette(xterm256.palette_short)
                 img = img.quantize(palette=img_palette, dither=0)
-            return self.img_to_term_block(img, -1, w, h, w, h*2)
+            return self.img_to_term_block(img.tobytes(), -1, w, h, w, h*2)
 
         img = img.resize((w, h), Image.Resampling.LANCZOS)
         img_gray = img.convert("L")
@@ -439,10 +463,8 @@ def img_to_term(img, img_gray, bg_color, ascii_palette, ascii_palette_len, scree
     return "\n".join(out_lines)
 
 
-def img_to_term_block(img, bg_color, screen_width, screen_height, img_width, img_height):
+def img_to_term_block(data, bg_color, screen_width, screen_height, img_width, img_height):
     """Convert image to ANSI-colored string made of half-blocks, ready to be printed in terminal"""
-    pixels = img.load()
-
     padding_h = (screen_height - img_height // 2) // 2
     padding_w = (screen_width - img_width) // 2
 
@@ -465,8 +487,8 @@ def img_to_term_block(img, bg_color, screen_width, screen_height, img_width, img
 
         # image columns
         for x in range(img_width):
-            top_color = pixels[x, y] + 16
-            bot_color = pixels[x, y + 1] + 16
+            top_color = data[y * img_width + x] + 16
+            bot_color = data[(y + 1) * img_width + x] + 16
             if top_color != current_fg:
                 line_parts.append(f"{ESC}[38;5;{top_color}m")
                 current_fg = top_color
@@ -489,52 +511,58 @@ def img_to_term_block(img, bg_color, screen_width, screen_height, img_width, img
     return "\n".join(out_lines)
 
 
-def img_to_term_block_truecolor(img, bg_color, screen_width, screen_height, img_width, img_height):
+def img_to_term_block_truecolor(data, bg_color, screen_width, screen_height, img_width, img_height):
     """Convert image to ANSI true-color string made of half-blocks"""
-    pixels = img.load()
     padding_h = (screen_height - img_height // 2) // 2
     padding_w = (screen_width - img_width) // 2
 
-    bg = f"{ESC}[48;5;{bg_color}m"   # bg color is not in r;g;b
+    bgr = f"{ESC}[48;5;{bg_color}m"   # bg color is not in r;g;b
     out_lines = []
 
     # top padding
     for _ in range(padding_h):
-        out_lines.append(bg + (" " * screen_width) + RESET)
+        out_lines.append(bgr + (" " * screen_width) + RESET)
 
     # image rows
     for y in range(0, img_height - 1, 2):
         line_parts = []
-        current_fg = None
-        current_bg = None
+        cfr, cfg, cfb = None, None, None
+        cbr, cbg, cbb = None, None, None
 
         # left padding
         if padding_w > 0:
-            line_parts.append(bg + (" " * padding_w))
+            line_parts.append(bgr + (" " * padding_w))
 
         # image columns
+        row_top = y * img_width * 3
         for x in range(img_width):
-            top_color = pixels[x, y]
-            bot_color = pixels[x, y + 1]
-            if top_color != current_fg:
-                line_parts.append(f"{ESC}[38;2;{top_color[0]};{top_color[1]};{top_color[2]}m")
-                current_fg = top_color
-            if bot_color != current_bg:
-                line_parts.append(f"{ESC}[48;2;{bot_color[0]};{bot_color[1]};{bot_color[2]}m")
-                current_bg = bot_color
+            idx = row_top + x * 3
+            fr = data[idx]
+            fg = data[idx + 1]
+            fb = data[idx + 2]
+            idx += img_width * 3
+            br = data[idx]
+            bg = data[idx + 1]
+            bb = data[idx + 2]
+            if fr != cfr or fg != cfg or fb != cfb:
+                line_parts.append(f"{ESC}[38;2;{fr};{fg};{fb}m")
+                cfr, cfg, cfb = fr, fg, fb
+            if br != cbr or bg != cbg or bb != cbb:
+                line_parts.append(f"{ESC}[48;2;{br};{bg};{bb}m")
+                cbr, cbg, cbb = br, bg, bb
             line_parts.append("▀")
 
         # right padding
         visible_len = padding_w + img_width
         if visible_len < screen_width:
-            line_parts.append(bg + (" " * (screen_width - visible_len)))
+            line_parts.append(bgr + (" " * (screen_width - visible_len)))
 
         line_parts.append(RESET)
         out_lines.append("".join(line_parts))
 
     # bottom padding
     while len(out_lines) < screen_height:
-        out_lines.append(bg + (" " * screen_width) + RESET)
+        out_lines.append(bgr + (" " * screen_width) + RESET)
 
     return "\n".join(out_lines)
 

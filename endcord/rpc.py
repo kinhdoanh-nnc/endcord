@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import json
 import logging
@@ -242,7 +241,9 @@ class RPC:
                         break
                     logger.debug(f"Received: {json.dumps(data, indent=2)}")
 
-                    if data["cmd"] == "SET_ACTIVITY" and "activity" in data["args"]:
+                    if data["cmd"] == "SET_ACTIVITY":
+                        if "activity" not in data["args"]:
+                            continue
                         # prevent sending presences too often
                         delay = GATEWAY_RATE_LIMIT_SAME if data["args"]["activity"] == prev_activity else GATEWAY_RATE_LIMIT
                         if time.time() - sent_time < delay:
@@ -330,8 +331,6 @@ class RPC:
                             "nonce": data["nonce"],
                         }
                         send_data(connection, op, response)
-                    elif data["cmd"] == "SET_ACTIVITY":
-                        pass
                     else:
                         # all other commands are currently unimplemented
                         # returning them to client so it can keep running with rich presence only

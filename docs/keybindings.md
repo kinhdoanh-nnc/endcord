@@ -63,7 +63,7 @@
 - `Ctrl+X` - Cancel all downloads and uploads
 - `Alt+D` - Cycle user status (online/away/DnD/invisible)
 - `Alt+M` - Toggle member list
-- `Ctrl+T` - Toggle channel tabbed (pinned) state
+- `Ctrl+T` - Toggle tabbed state for selected channel in tree
 - `Alt+NUM`- Switch to tab, `NUM` is 1-9 in number row, not numeric keypad!
 - `Alt+E` - Open external editor to type message in it
 - `Ctrl+K` - Open command palette and type `goto ` and show recent channels
@@ -93,11 +93,22 @@ Some keybindings are used by terminals or OS itself, so they are by default rebo
 
 
 ## Mouse controls
-### Double click in:
-- Tree - or enter channel
+
+### Single click on:
+- All windows, in tree also: un/collapse
+- Tabs (subtitle) line to switch tabs (only if exactly `format_title_line_r = "%tabs"` in config)
+- Popup window title and drag it to resize it
+- Scrollbar to move it there, or drag it
+- Tree border to toggle its minimized state
+- Member list border to toggle its minimized state
+- Buttons in call UI, click on input/output volume values to toggle mute each
+
+### Double click on:
+- Tree - un/collapse category/server or enter channel
 - Popup window - select item
 - Member list - view member profile
 - Input line - select a word
+- Tabs (subtitle) line - if tab is temprary (italics) will be made permanent
 
 ### Double click in chat on:
 - Message time - start replying to message
@@ -113,12 +124,8 @@ Some keybindings are used by terminals or OS itself, so they are by default rebo
 
 ### Other
 - Scroll up/down in all windows
-- Click to select in all windows, in tree also: un/collapse
-- Click on tab string to switch tabs (only if exactly `format_title_line_r = "%tabs"` in config)
-- Click on popup window title and drag it to resize it
-- Click on scrollbar to move it there, or drag it
-- Click on tree border to toggle minimized tree state
-- Click on buttons in call UI, click on input/output volume values to toggle mute each
+- Middle click on chneel in tree to add it to new tab
+- Middle click on tab (in subtitle line) to remove it
 
 On Windows, double click isn't working, use triple click instead.
 
@@ -213,7 +220,7 @@ Special commands available only for command-bindings are documented in [Commands
 - `X` - Cancel all downloads and uploads
 - `s` - Cycle user status (online/away/DnD/invisible)
 - `m` - Toggle member list
-- `t` - Toggle channel tabbed (pinned) state
+- `t` - Toggle tabbed state for selected channel in tree
 - `NUM`- Switch to tab, `NUM` is 1-9.
 - `E` - Open external editor to type message in it
 - `Ctrl+K` - Open command palette and type `goto ` and show recent channels

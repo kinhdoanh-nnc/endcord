@@ -1,7 +1,6 @@
-# Copyright (C) 2025-2026 SparkLost
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3.
+# endcord - Copyright (C) 2025-2026 SparkLost. All Rights Reserved.
+# Source-available under the Endcord License. See LICENSE for terms.
+# Redistribution of modified versions is not permitted.
 
 import heapq
 import importlib.util
@@ -57,7 +56,7 @@ def fuzzy_match_score(query, candidate):
     return total_score
 
 
-# use cython if available, ~6.7 times faster
+# use cython if available, ~10 times faster
 if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.search"):
     from endcord_cython.search import fuzzy_match_score
 
@@ -541,13 +540,13 @@ def search_games(games, blacklist, query, limit=50, score_cutoff=15):
     return sorted(results, key=lambda x: x[2], reverse=True)
 
 
-def search_tabs(tabs, query, limit=50, score_cutoff=15):
+def search_tabs(channel_cache, query, limit=50, score_cutoff=15):
     """Search for tabs"""
     results = []
     worst_score = score_cutoff
 
-    for num, tab in enumerate(tabs):
-        formatted = f"{num + 1} - {tab["channel_name"]} ({tab["guild_name"]})"
+    for num, tab in enumerate(channel_cache):
+        formatted = f"{num + 1} - {tab[4]} ({tab[5]})"
         score = fuzzy_match_score(query, formatted)
         if score < worst_score and query:
             continue

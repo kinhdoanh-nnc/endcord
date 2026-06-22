@@ -16,8 +16,9 @@
 Endcord is a third-party feature rich Discord client, running entirely in terminal.  
 It is built with Python (this [doesnt mean its slow](#note-on-python-performance-misconceptions)) and ncurses library, to deliver lightweight yet feature rich experience.  
 [More screenshots](https://github.com/sparklost/endcord/blob/main/.github/screenshots.md).  
-Official endcord will always stay **purely human project**.
-Third party endcord forks may add features that can lead to account ban, contain malicious code, cause instability, especially if they include LLM generated/modified code, so it is strongly recommended to avoid them. If you want to create fork that modifies original code, please DONT.  
+Official endcord will always stay **purely human project**.  
+Endcord is source-available licensed, and thus not open source, more [here](#source-available-license).  
+Any third party endcord forks may add features that can lead to account ban, contain outdated or even malicious code, cause instability, especially if they include LLM generated/modified code, so it is strongly recommended to avoid them. If you want to create fork that modifies the code, YOU ARE NOT ALLOWED TO.  
 
 
 ## Features
@@ -51,7 +52,7 @@ Third party endcord forks may add features that can lead to account ban, contain
 - Show embeds, attachment types and links, code blocks
 - Spellchecking
 - Advanced input line operations and ability to use external editor
-- Tabs
+- Tabs and temporary tabs with mouse controls (click, double click, middle click)
 - Assist when typing channel/username/role/emoji/sticker
 - Search, preview and send gifs
 - Record and send voice messages
@@ -352,7 +353,7 @@ Optional dependencies:
 - `imagemagick` - To make notification images round; only needed for endcord-lite.
 
 ### Windows
-- Pre-built binaries (built with nuitka using clang) are available in releases
+- Pre-built binaries (built with nuitka) are available in releases
 - [Build](#building) endcord, standalone executable can be found in `./dist/endcord.exe`  
 
 Install [WezTerm](https://wezterm.org/) (recommended), [windows terminal](https://github.com/microsoft/terminal), [cmder](https://github.com/cmderdev/cmder), or any other modern terminal. And run exe from there. If built with experimental windowed mode, terminal is not required to use endcord.  
@@ -362,7 +363,7 @@ Emoji are known to work only with WezTerm but many will fail to draw and mess-up
 Optional dependency for spellchecking: [aspell](https://github.com/adamyg/aspell-win32). It is expected to be installed in `C:\Program Files (x86)\`. Alongside with base aspell, dictionary must be installed, even en_US.   
 
 ### macOS
-- Pre-built binaries (built with nuitka using clang) are available in releases
+- Pre-built binaries (built with pyinstaller and clang) are available in releases
 - [Build](#building) endcord, standalone executable can be found in `./dist/`.  
 - Install script (installs binary from latest release or updates existing):
     - `bash -c "$(curl -fsSL https://raw.githubusercontent.com/sparklost/endcord/main/tools/install.sh)"`
@@ -468,7 +469,10 @@ Anonymized data that might help in debugging is saved in `Debug` directory, see 
 All channel and server names, topics, descriptions are replaced. All channel and server IDs are added to random number and hashed, so they are irreversible changed, and will be different on each run.
 
 ### Note on Python performance misconceptions
-Python is slower than languages like C or Rust, but in this use case it does not affect performance. Endcord is event-driven and network-bound, not CPU-bound, so Python’s overhead is negligible (significantly reduced when built with nuitka). And all CPU-critical components are implemented in Cython. Python was chosen because it enables rapid development.
+Python is slower than languages like C or Rust, but in this use case it does not affect performance. Endcord is event-driven and network-bound, not CPU-bound, so Python’s overhead is negligible (significantly reduced when built with nuitka).  
+All CPU-critical components are implemented in Cython with minimal python calls, resulting in near-C speeds.  
+Python was chosen because it enables rapid development.  
+Additionally if built with nuitka, custom Python is compiled from source (preferrably with clang) with custom compiler flags for performance.
 
 ### Running multiple endcord instances
 To run multiple endcord instances at the same time, while keeping them completely separated, run endcord with `ENDCORD_APP_NAME` environment variable set to something else. This will change "endcord" everywhere: in config and cache paths, notifications, keyring...
@@ -547,6 +551,15 @@ Or, if you don't have a github account, want more interactive support, to share 
 As endcord build script requires network access in order to install dependencies, it is impossible to use it to build endcord binaries for many distributions/repositories.  
 If thats the case, custom build script must be made, guidelines and commands for writing such are available in [contributing.md](.github/CONTRIBUTING.md#build-steps-for-package-maintainers).  
 After submitting a package to distributions package repository, open an issue here, so I can review it and add it to readme after it gets accepted.
+
+### Source-available license
+Endcord is licensed under source-available license. This means it is **NOT OPEN SOURCE**. How this affects you:
+If you are a user, this **doesn't affect** the slightest how you are using endcord.  
+If you are a developer, you are **NOT ALLOWED TO PUBLICLY MODIFY THE CODE**.  
+If you are a package maintainer, license specifically allows it to distribute **binaries built from verbatim unmodified source code**.  
+Slightly longer and more detailed explanation is in the [license file](LICENSE).
+Why? Because this is one-person project, and this person is greedily taking all the fun of programming for themselves. And as bonus they ensures that this project stays 100% human made, forever.
+
 
 ## Planned features
 Go to [TODO](todo.txt).
