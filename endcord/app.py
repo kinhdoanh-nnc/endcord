@@ -1057,7 +1057,12 @@ class Endcord:
         else:
             self.tui.update_chat(self.chat, self.chat_format)
         self.this_unread = select_message_index is not None
-        self.set_channel_seen(channel_id, self.get_chat_last_message_id(), ack=False, force_remove_notify=True)   # right after update_chat so new_unreads is determined
+        self.set_channel_seen(   # right after update_chat so new_unreads is determined
+            channel_id,
+            self.get_chat_last_message_id(),
+            ack=not(self.tui.get_chat_selected()[1]),   # ack only if its not scrolled up
+            force_remove_notify=True,
+        )
         self.close_extra_window()
         if self.disable_sending:
             self.update_extra_line(self.disable_sending, timed=False, color=self.colors[9])
@@ -6968,7 +6973,7 @@ class Endcord:
 
         # check for unreads/mentions for tray icon
         if uses_pgcurses:
-            if not self.tui.get_focused() and not bool(self.tui.get_chat_selected()[1]):
+            if not self.tui.get_focused() and not self.tui.get_chat_selected()[1]:
                 # tree update for current channel is triggered from process_msg_events_other_channels
                 self.tui.set_chat_index(1)
                 self.update_chat(scroll=False)
@@ -7115,7 +7120,7 @@ class Endcord:
             this_channel = channel_id == self.active_channel["channel_id"]
             last_message_id = channel["last_message_id"]
             unseen = not last_message_id or int(channel["last_acked_message_id"]) < int(last_message_id)
-            if unseen and (not this_channel or (not bool(self.tui.get_chat_selected()[1]) and this_channel) or force):
+            if unseen and (not this_channel or (not self.tui.get_chat_selected()[1] and this_channel) or force):
                 if not message_id or message_id < channel["last_message_id"]:
                     message_id = channel["last_message_id"]
                 if message_id:
@@ -7165,7 +7170,7 @@ class Endcord:
             }
             update_tree = True
 
-        if channel_id == self.active_channel["channel_id"] and not bool(self.tui.get_chat_selected()[1]):
+        if channel_id == self.active_channel["channel_id"] and not self.tui.get_chat_selected()[1]:
             self.set_channel_seen(self.active_channel["channel_id"], message_id)
         if (update_tree or ping) and not skip_unread:
             self.update_tree()
@@ -7433,7 +7438,7 @@ class Endcord:
                 self.messages.pop(-1)
             # set this unreads state
             update_status_line = False
-            if not my_message and bool(self.tui.get_chat_selected()[1]):
+            if not my_message and self.tui.get_chat_selected()[1]:
                 if not self.this_unread:
                     update_status_line = True
                 self.this_unread = True
