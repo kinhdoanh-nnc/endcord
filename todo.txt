@@ -1,15 +1,16 @@
-Fix build script failing to detect no-openblas numpy
+Fix build script failing to detect no-openblas numpy on gh runner
 Fix build script clang python build
+Update screenshots
 
-Fix sent audio is delayed and low quality
-Fix receiver audio mixer
-Add transmmitter audio mixer
-
-Add custom python package management through build.py
+Add custom environment package management through build.py
 Add --norust option to build script
 Add --minimal option to build script (rempves numpy orjson soundcard)
 Remove ruff and uv
 
+Fix sent audio is delayed and low quality
+Fix receiver audio mixer
+Add transmmitter audio mixer
+Add code block language syntax
 Add inbox
 Fix RTP metrics
 Fix some emoji are drawn as text
