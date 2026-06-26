@@ -233,6 +233,17 @@ def find_timestamp(full_string, timestamp):
     return start_index, end_index
 
 
+def format_kilo(n, dec=1):
+    """Convert integer to string with K sufix"""
+    if n < 1000:
+        return str(n)
+    value = n / 1000
+    if n > 10000:
+        dec = 0
+    s = f"{value:.{dec}f}".rstrip("0").rstrip(".")
+    return f"{s}K"
+
+
 def move_by_indexes(indexes, *ranges_lists):
     """Move format by indexes"""
     for ranges in ranges_lists:
@@ -3396,7 +3407,7 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
                 activity_type = activities[0][0]
                 verb = ACTIVITY_VERBS[activity_type] if emoji_safe else activity_icons[activity_type]
                 activity_title = activities[0][1]
-                if fun and not emoji_safe and activity_type == 2 and "metal" in activity_title:
+                if fun and not emoji_safe and activity_type == 2 and "metal" in activity_title.lower():
                     verb = "🤘"
                 status_text = f"  {verb}{f"+{len(activities)-1}" if len(activities) > 1 else ""} {activity_title}"
                 member_list.append(normalize_string(status_text, width-1, emoji_safe=True) + filler)
@@ -3409,14 +3420,18 @@ def generate_member_list(member_list_raw, guild_roles, width, use_nick, status_s
 
         else:   # user group
             text = "Unknown group"
-            if member["group"] == "online":
-                text = "Online"
-            elif member["group"] == "offline":
-                text = "Offline"
             group_id = member["group"]
-            for role in guild_roles:
-                if role["id"] == group_id:
-                    text = role["name"]
+            count = member["count"]
+            if group_id in ("online", "offline"):
+                text = group_id.capitalize()
+            else:
+                for role in guild_roles:
+                    if role["id"] == group_id:
+                        text = role["name"]
+            if count:
+                count_text = f" ({count})"
+                this_format.append([color_low, None, len(text), len(text) + len(count_text)])
+                text += count_text
             if not first:
                 member_list.append(filler)
                 member_list_format.append(this_format)

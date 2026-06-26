@@ -1,10 +1,18 @@
+Fix markdown matched in code blocks
 Fix mouse controls on windows
 Fix flickering when scroll tree up/down
 
+release 1.5.0
+send discord announcement
+comment on nix endcord package pr
+
+RUST FREE:
 Add custom environment management through build.py - remove uv dependency
 Add --norust option to build script
 Add --minimal option to build script (removes numpy orjson soundcard)
+Write custom optimized json parser in cython - remove orjson dependency
 
+MISC:
 Fix sent audio is delayed and low quality
 Fix receiver audio mixer
 Add transmmitter audio mixer
@@ -20,7 +28,7 @@ Rewrite experimental mode in not-pygame
 Video, stage and stream calls
 Localization
 
-Extensions:
+EXTENSIONS:
 endcord-termux-rich
 endcord-undelete
 endcord-message-replace

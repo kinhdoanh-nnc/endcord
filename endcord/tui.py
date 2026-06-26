@@ -382,6 +382,7 @@ class TUI():
         self.extra_window_format = []
         self.member_list = []
         self.member_list_format = []
+        self.member_list_title_text = ""
         self.red_list = []
         self.extra_selected = -1
         self.extra_index = 0
@@ -1431,6 +1432,22 @@ class TUI():
             self.need_update.set()
 
 
+    def draw_member_list_title(self, title_line, color=None, force=False):
+        """Draw title above member list"""
+        if not self.win_member_list or self.member_list_width == 2 or not title_line or (not force and title_line == self.member_list_title_text):
+            return
+        self.member_list_title_text = title_line
+        y, x = self.win_member_list.getbegyx()
+        y -= 1
+        x += 1
+        parts = title_line.split(" ")
+        self.screen.addstr(y, x, parts[0], curses.color_pair(color if color else self.default_color))
+        if len(parts) > 1:
+            self.screen.addstr(y, x + len(parts[0]), " " + parts[1], curses.color_pair(self.default_color))
+        self.screen.noutrefresh()
+        self.need_update.set()
+
+
     def draw_input_line(self):
         """Draw text input line"""
         with self.lock:
@@ -2023,6 +2040,7 @@ class TUI():
                     self.win_member_list = self.screen.derwin(*member_list_hwyx)
                     if self.bordered:
                         self.draw_border(member_list_hwyx)
+                        self.draw_member_list_title(self.member_list_title_text, force=True)
                         if self.have_title:
                             title_line_hwyx = (1, w - (self.tree_width + 2) - bool(self.win_member_list) * (self.member_list_width + 1), 0, self.tree_width + 2)
                             self.win_title_line = self.screen.derwin(*title_line_hwyx)
