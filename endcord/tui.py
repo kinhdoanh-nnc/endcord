@@ -29,7 +29,7 @@ else:
     BACKSPACE = curses.KEY_BACKSPACE
 BUTTON4_PRESSED = getattr(curses, "BUTTON4_PRESSED", 0)
 BUTTON5_PRESSED = getattr(curses, "BUTTON5_PRESSED", 0)
-ALT_SPACE = " "   # U+00A0 - non-breaking space
+ALT_SPACE = "⠀"   # U+2800 - braille pattern blank
 match_word = re.compile(r"\w")
 match_split = re.compile(r"[^\w']")
 match_spaces = re.compile(r" {3,}")
@@ -1586,6 +1586,7 @@ class TUI():
 
             except curses.error:
                 pass
+
             self.screen.noutrefresh()
             self.need_update.set()
 

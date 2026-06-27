@@ -27,7 +27,7 @@ TREE_EMOJI_REPLACE = "▮"
 TIME_DIVS = [1, 60, 3600, 86400, 2678400, 31190400]
 TIME_UNITS = ["second", "minute", "hour", "day", "month", "year"]
 SPLIT_AFTER_TIME = 10 * 60
-ALT_SPACE = " "   # U+00A0 - non-breaking space
+ALT_SPACE = "⠀"   # U+2800 - braille pattern blank
 MIN_TAB_LEN = 8
 
 ACTIVITY_VERBS = ("Playing", "Streaming", "Listening to", "Watching", "Competing in")
@@ -1569,7 +1569,7 @@ class ChatGenerator:
         next_id = int(next_msg["id"]) if next_msg else -1
         if not self.have_unseen_messages_line and self.date_separator and last_seen_msg and (num == num_messages-1 or (next_id <= int(last_seen_msg))):
             if self.message_spacing:
-                chat.append(" " * max_length)
+                chat.append(" " if num % 2 else ALT_SPACE + " " * (max_length-1))
                 chat_format.append([color_base])
                 chat_map.append((None, None, None, None, None, None))
             # keep text always in center
@@ -1578,7 +1578,7 @@ class ChatGenerator:
             chat_map.append(None)
             self.have_unseen_messages_line = True
             if self.message_spacing:
-                chat.append(" " * max_length)
+                chat.append(" " if num % 2 else ALT_SPACE + " " * (max_length-1))
                 chat_format.append([color_base])
                 chat_map.append(None)
 
@@ -1586,7 +1586,7 @@ class ChatGenerator:
             # date separator
             if self.enable_separator and day_from_snowflake(message["id"]) != day_from_snowflake(next_msg["id"]):
                 if self.message_spacing:
-                    chat.append(" " * max_length)
+                    chat.append(" " if num % 2 else ALT_SPACE + " " * (max_length-1))
                     chat_format.append([color_base])
                     chat_map.append(None)
                 # if this message is 1 day older than next message (up - past message)
@@ -1599,14 +1599,14 @@ class ChatGenerator:
                 chat_format.append([self.color_separator])
                 chat_map.append(None)
                 if self.message_spacing:
-                    chat.append(" " * max_length)
+                    chat.append(" " if num % 2 else ALT_SPACE + " " * (max_length-1))
                     chat_format.append([color_base])
                     chat_map.append(None)
 
             # empty separator between messages not from same sender of after period of time and if message has reply or interaction
             elif message["referenced_message"] or message["interaction"] or (self.message_spacing and (message["user_id"] != next_msg["user_id"] or unix_from_snowflake(message["id"]) - unix_from_snowflake(next_msg["id"]) > SPLIT_AFTER_TIME)):
                 group = False
-                chat.append(" " * max_length)
+                chat.append(" " if num % 2 else ALT_SPACE + " " * (max_length-1))
                 chat_format.append([color_base])
                 chat_map.append(None)
             else:

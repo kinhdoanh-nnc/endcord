@@ -1,6 +1,5 @@
 WIP:
 Fix mouse controls on windows
-Fix flickering when scrolling tree up/down
 Switch to raw curses input mode
 Switch to latest curses version
 Change bindings to standard values
