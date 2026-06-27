@@ -1,5 +1,4 @@
 WIP:
-Fix mouse controls on windows
 Switch to raw curses input mode
 Switch to latest curses version
 Change bindings to standard values

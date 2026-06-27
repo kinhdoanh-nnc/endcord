@@ -3228,7 +3228,8 @@ class TUI():
             _, x, y, _, bstate = curses.getmouse()
         except curses.error:
             return None
-        while self.run:   # drain internal curses buffer for mouse events
+        while self.run and sys.platform != "win32":   # drain internal curses buffer for mouse events
+            # windows-curses doesnt error here, so this cant be used
             try:
                 _, x, y, _, bstate = curses.getmouse()
             except curses.error:
