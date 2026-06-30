@@ -238,10 +238,10 @@ Gateway returns error code 4000 if event "update presence" (opcode 3) is sent.
 - `uv sync --group build` - endcord-lite  
     Will install all dependencies from pyproject.toml under `dependencies` and `build`.
 
-3. Check if numpy without openblas is already installed, if returns 1 then its not, so download and build numpy
+3. Check if numpy without openblas is already installed
 - Numpy build can be skipped if its impossible, but binary will be few MB larger.
 - If building with pyinstaller skip numpy build.
-- This command will print `1` if openblas is found in numpy, and then it has to be built locally.
+- This command will print `1` if openblas is found in numpy, if thats the case then it has to be built locally (do step 4).
 ```bash
 uv run python -c "import numpy; print(int(numpy.__config__.show_config('dicts')['Build Dependencies']['blas'].get('found', False)))"
 ```
@@ -253,12 +253,11 @@ export CC=clang
 export CXX=clang++
 uv pip install pip
 .venv/bin/python -m pip uninstall --yes numpy
-.venv/bin/python -m pip install --no-cache-dir --no-binary=:all: numpy --config-settings=setup-args=-Dblas=None --config-settings=setup-args=-Dlapack=None
+.venv/bin/python -m pip install --no-cache-dir --no-binary=:all: numpy --config-settings=setup-args=-Dblas=none --config-settings=setup-args=-Dlapack=none --config-settings=setup-args=-Dallow-noblas=true
 uv pip uninstall pip
 ```
 
 5. Build cython extensions
-- Skip this step only if final binary gives error `Dynamic module does not define module export function`.
 - Compiler args are set in the setup.py, so no need to set them as env vars.
 ```bash
 export CC=clang
@@ -271,6 +270,6 @@ uv run python setup.py build_ext --inplace
 - run `compress_emoji()` from build.py - will make `emoji.json` smaller.
 
 7. Get and run build command
-- Build commands can be obtained by running `python build.py --print-cmd`, adding other arguments will change the printed command.
+- Build commands can be obtained by running `python build.py --print-cmd`, adding other arguments will change it.
 - The script will also append to `CFLAGS` and `LDFLAGS` environment variables, which depend on compiler used. Same compiler args are used for all compilations except custom python build (the bash script will set them).
 - Recommended: `python build.py --print-cmd --nuitka`.
