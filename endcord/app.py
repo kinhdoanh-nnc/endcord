@@ -3058,7 +3058,7 @@ class Endcord:
 
 
     def execute_command(self, cmd_type, cmd_args, cmd_text, chat_sel, tree_sel, reset=True):
-        """Execute custom command"""
+        """Execute client command"""
         logger.debug(f"Executing command, type: {cmd_type}, args: {cmd_args}")
         if reset:
             self.restore_input_text = (None, None)
@@ -3765,7 +3765,7 @@ class Endcord:
         elif cmd_type == 41:   # GIF
             search_text = cmd_args.get("search_text", None)
             search_text = search_text.strip()
-            if search_text[8:].startswith("tenor.com/") or search_text.startswith("klipy.com/"):
+            if search_text[8:].startswith("tenor.com/") or search_text[8:].startswith("klipy.com/"):
                 self.insert_into_input_store(search_text)
             elif not self.search:
                 reset = False

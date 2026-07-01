@@ -205,8 +205,8 @@ class TUI():
             self.backspace_code = 8 if (curses.erasechar() == 8 or "XTERM_VERSION" in os.environ or sys.platform == "win32") else 127
         except Exception:
             self.backspace_code = 127
-        self.fallback_keybinding_parser = config["fallback_keybinding_parser"]
-        if self.fallback_keybinding_parser or sys.platform == "win32":   # raw parser doesnt work well with windows
+        self.fallback_keybinding_parser = config["fallback_keybinding_parser"] or sys.platform == "win32"
+        if self.fallback_keybinding_parser:
             screen.keypad(True)
             self.get_key = keybinding.get_key_fallback
             self.backspace_code = 263 if self.backspace_code == 127 else 8
@@ -695,6 +695,7 @@ class TUI():
                 self.win_member_list.noutrefresh()
                 self.need_update.set()
         self.disable_drawing = True
+        curses.ungetch(27)
         self.hibernate_cursor = 10
         time.sleep(0.2)   # be sure everything is stopped before pausing
         with self.lock:
@@ -2590,7 +2591,7 @@ class TUI():
         selected_completion = 0
         self.keybinding_chain = None
         key = -1
-        self.screen.timeout(200)
+        self.screen.timeout(250)
         while self.run:
             while self.disable_drawing:
                 time.sleep(0.2)
@@ -2660,7 +2661,6 @@ class TUI():
 
             # special keys
             if key == keybinding.KEY_ESCAPE:
-                self.screen.nodelay(False)
                 if self.assist_start:
                     self.assist_start = -1
                 if self.vim_mode and self.insert_mode:

@@ -45,6 +45,7 @@ def get_key(screen, backspace_code=127):
                 break
             sequence_list.append(ch)
         screen.nodelay(False)
+        screen.timeout(250)   # restore previous setting
 
         if len(sequence_list) > 1:
             sequence = "".join(chr(b) for b in sequence_list)
@@ -454,9 +455,10 @@ def picker_internal(screen, keybindings, command_bindings, fallback):
     curses.use_default_colors()
     curses.curs_set(0)
     curses.init_pair(1, -1, -1)
+    curses.mousemask(curses.ALL_MOUSE_EVENTS)
+    curses.mouseinterval(0)
     sys.stdout.write("\x1b[?2004h")
     sys.stdout.flush()
-    curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     if sys.platform == "win32":
         fallback = True
     if not fallback:

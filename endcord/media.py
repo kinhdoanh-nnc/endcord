@@ -618,10 +618,13 @@ class TerminalMedia():
 
     def play_video(self, path, loop=False):
         """Decode video and audio frames and manage queues"""
+        if loop:
+            self.ui = False
         if self.ui:
             self.show_ui()
         self.seek = None
         self.screen_height, self.screen_width = 0, 0
+        self.clear_queues()
 
         container = av.open(path)
         self.ended = False
@@ -687,6 +690,7 @@ class TerminalMedia():
                     self.video_time += frame_duration
             if loop and self.playing:
                 container.seek(0)
+                self.video_time = 0
             else:
                 break
 
@@ -740,7 +744,7 @@ class TerminalMedia():
                 self.play_youtube(yt_match.group())
             elif "https://" in path:
                 self.media_type = "video"
-                self.start_ui_thread()
+                self.start_ui_thread(loop)
                 self.play_video(path)
             else:
                 mime = get_mime(path).split("/")
@@ -755,11 +759,11 @@ class TerminalMedia():
                         self.play_img(path)
                 elif mime[0] == "video":
                     self.media_type = "video"
-                    self.start_ui_thread()
+                    self.start_ui_thread(loop)
                     self.play_video(path, loop)
                 elif mime[0] == "audio":
                     self.media_type = "audio"
-                    self.start_ui_thread()
+                    self.start_ui_thread(loop)
                     self.play_audio(path, loop=loop)
                 else:
                     logger.warning(f"Unsupported media format: {mime}")
@@ -824,9 +828,9 @@ class TerminalMedia():
             self.show_ui()
 
 
-    def start_ui_thread(self):
+    def start_ui_thread(self, init_hidden=True):
         """Start UI drawing thread"""
-        self.ui_thread = threading.Thread(target=self.draw_ui_loop, daemon=True)
+        self.ui_thread = threading.Thread(target=self.draw_ui_loop, daemon=True, args=(init_hidden, ))
         self.ui_thread.start()
 
 
@@ -843,12 +847,12 @@ class TerminalMedia():
         self.ui_timer = 30
 
 
-    def draw_ui_loop(self):
+    def draw_ui_loop(self, init_hidden):
         """Continuously draw UI line at bottom of the screen"""
         if self.media_type == "video":
             self.video_duration = 1
             self.video_time = 0
-            self.ui_timer = 0
+            self.ui_timer = 30 if init_hidden else 0
             while self.run:
                 if self.ui_timer <= 25:
                     self.ui_line = self.build_ui_string()
