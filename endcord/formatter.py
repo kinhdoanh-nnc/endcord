@@ -338,7 +338,7 @@ def split_index_wch(text, max_width):
     return len(text)
 
 
-def fix_line_format(line_format, text):
+def fix_line_format_py(line_format, text):
     """Fix line format ranges for wide character positions"""
     if len(line_format) <= 1:
         return line_format
@@ -416,6 +416,8 @@ if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endc
         split_index_wch,
     )
     init_wide_ranges(WIDE_RANGES)
+else:
+    fix_line_format = fix_line_format_py
 
 
 def normalize_string(input_string, max_length, emoji_safe=False, dots=False, fill=True):
@@ -2149,7 +2151,10 @@ class ChatGenerator:
                 format_line += format_spoilers
                 if edited and not next_line and not (self.edited_before_content and not group):
                     format_line.append(self.color_mention_chat_edited + [len_new_line - self.len_edited, len_new_line])
-                chat_format.append(fix_line_format(format_line, new_line))
+                try:
+                    chat_format.append(fix_line_format(format_line, new_line))
+                except OverflowError:   # fallback if anyhing goes wrong
+                    chat_format.append(fix_line_format_py(format_line, new_line))
             else:
                 format_line = self.color_newline[:]
                 format_line += format_multiline_one_line_format(md_format, len_new_line, self.newline_len, this_quote)
@@ -2160,7 +2165,11 @@ class ChatGenerator:
                 format_line += format_spoilers
                 if edited and not next_line and not (self.edited_before_content and not group):
                     format_line.append([*self.color_chat_edited, len_new_line - self.len_edited, len_new_line])
-                chat_format.append(fix_line_format(format_line, new_line))
+                try:
+                    chat_format.append(fix_line_format(format_line, new_line))
+                except OverflowError:   # fallback if anyhing goes wrong
+                    chat_format.append(fix_line_format_py(format_line, new_line))
+                    logger.error(f"An OverflowError occured in cython. Please report with this information: {repr(format_line)}, {repr(new_line)}")
             line_num += 1
 
         # add images to ranges in chat_map relative to this message base line and add format for spoiler images
