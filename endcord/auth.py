@@ -4,6 +4,7 @@
 
 import base64
 import http.client
+import json
 import logging
 import random
 import socket
@@ -13,17 +14,8 @@ import threading
 import time
 import urllib.parse
 
-import websocket
-
-try:
-    import orjson as json
-except ImportError:
-    try:
-        import ujson as json
-    except ImportError:
-        import json
-
 import socks
+import websocket
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA

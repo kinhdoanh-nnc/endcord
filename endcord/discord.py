@@ -586,11 +586,13 @@ class Discord():
         """
         if self.protos[num-1]:
             return self.protos[num-1]
+        if self.bot and num == 2:
+            return {}
         message_data = None
         url = f"/api/v9/users/@me/settings-proto/{num}"
         data, status = self.request("GET", url, message_data, self.header)
         if not status:
-            return None
+            return {}
         if status == 200:
             data = json.loads(data)["settings"]
             if num == 1:
@@ -601,7 +603,7 @@ class Discord():
                 return {}
             return self.protos[num-1]
         log_api_error(data, status, "get_settings_proto")
-        return False
+        return {}
 
 
     def patch_settings_proto(self, num, data):

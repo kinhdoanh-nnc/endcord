@@ -131,8 +131,8 @@ class Downloader:
                         break
                     out.write(data)
 
-        except Exception as e:
-            logger.error(e)
+        except Exception:
+            logger.exception("Error downloading file:")
         finally:
             if connection:
                 connection.close()

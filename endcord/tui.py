@@ -3,7 +3,6 @@
 # Redistribution of modified versions is not permitted.
 
 import curses
-import importlib.util
 import logging
 import os
 import re
@@ -183,9 +182,11 @@ def draw_chat(win_chat, h, w, chat_buffer, chat_format, chat_index, chat_selecte
 
 
 # use cython if available, ~1.5 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.tui") and sys.platform != "win32":
+try:
     # windows curses returns negative value from curses.color_pair() causing crash in draw_chat cython function
     from endcord_cython.tui import draw_chat
+except ImportError:
+    pass
 
 
 class TUI():
@@ -1261,12 +1262,18 @@ class TUI():
             if title_txt_r:
                 title_txt_r = title_txt_r[:w - 2*self.bordered]
             title_txt_l = self.title_txt_l
+            title_txt_l_format = self.title_txt_l_format
 
             if self.tree_width < 10:   # merge title tree with left title
                 if self.bordered:
                     title_tree_txt = replace_spaces_dash(trim_with_dash(self.title_tree_txt[:self.tree_width_conf]))
                     title_tree_txt = title_tree_txt + "─" * (self.tree_width_conf - len(title_tree_txt) - 2) + "─"
                     title_txt_l = title_tree_txt + trim_with_dash(title_txt_l)
+                    new_format_l = []
+                    shift = len(title_tree_txt)
+                    for item in title_txt_l_format:
+                        new_format_l.append((item[0], item[1], item[2] + shift, item[3] + shift))
+                    title_txt_l_format = new_format_l
                 else:
                     title_tree_txt = self.title_tree_txt[:self.tree_width_conf-2]
                     title_tree_txt = title_tree_txt + " " * (self.tree_width_conf-2 - len(title_tree_txt)) + " "
@@ -1280,29 +1287,29 @@ class TUI():
                     title_txt_r = title_txt_r[: max(w - (len(title_txt_l) + 5), 0)] + "─" + self.corner_ur
                     title_txt_l = title_txt_l + "─" * (w - len(title_txt_l) - len(title_txt_r))
                     new_format_l = []
-                    for item in self.title_txt_l_format:
+                    for item in title_txt_l_format:
                         new_format_l.append((item[0], item[1], item[2] + 1, min(item[3] + 1, w - 1)))
-                    self.title_txt_l_format = new_format_l
+                    title_txt_l_format = new_format_l
                 else:
                     title_txt_r = title_txt_r[: max(w - (len(title_txt_r) + 2), 0)] + " "
                     title_txt_l = title_txt_l + " " * (w - len(title_txt_l) - len(title_txt_r))
                 title_line = title_txt_l + title_txt_r
                 text_l_len = len(title_txt_l)
-                title_format = self.title_txt_l_format
-                for tab in self.title_txt_r_format:
-                    title_format.append((tab[0], tab[1], tab[2] + text_l_len, min(tab[3] + text_l_len, w - 1)))
+                title_format = title_txt_l_format
+                for part in self.title_txt_r_format:
+                    title_format.append((part[0], part[1], part[2] + text_l_len, min(part[3] + text_l_len, w - 1)))
 
             elif self.bordered:
                 title_txt_l = replace_spaces_dash(trim_with_dash(title_txt_l[:w - 1 - 2*self.bordered]))
                 title_line = self.corner_ul + title_txt_l + "─" * (w - len(title_txt_l) - 2) + self.corner_ur
                 title_format = []
-                for item in self.title_txt_l_format:
+                for item in title_txt_l_format:
                     title_format.append((item[0], item[1], item[2] + 1, min(item[3] + 1, w - 1)))
 
             else:
                 title_txt_l = title_txt_l[:w - 1 - 2*self.bordered]
                 title_line = title_txt_l + " " * (w - len(title_txt_l))
-                title_format = self.title_txt_l_format
+                title_format = title_txt_l_format
 
             if title_format:
                 draw_formatted_line(self.win_title_line, 0, 0, title_line, title_format, self.default_color if self.bordered else 12, self.attrib_map, self.lock)

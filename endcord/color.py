@@ -3,7 +3,6 @@
 # Redistribution of modified versions is not permitted.
 
 import curses
-import importlib.util
 import sys
 
 from endcord import xterm256
@@ -75,7 +74,7 @@ def convert_role_colors(all_roles, guild_id=None, role_id=None, default=-1):
 
 
 # use cython if available, ~20 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.color"):
+try:
     from endcord_cython.color import convert_role_colors as convert_role_colors_cython
     def convert_role_colors(all_roles, guild_id=None, role_id=None, default=-1):
         """
@@ -84,6 +83,8 @@ if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endc
         Optionally update only one guild and/or one role.
         """
         return convert_role_colors_cython(all_roles, colors, guild_id, role_id, default)
+except ImportError:
+    pass
 
 
 def check_color(color):

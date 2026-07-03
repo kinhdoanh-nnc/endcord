@@ -3,7 +3,6 @@
 # Redistribution of modified versions is not permitted.
 
 import heapq
-import importlib.util
 import re
 from itertools import chain
 
@@ -57,8 +56,10 @@ def fuzzy_match_score(query, candidate):
 
 
 # use cython if available, ~10 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.search"):
+try:
     from endcord_cython.search import fuzzy_match_score
+except ImportError:
+    pass
 
 
 def search_options(options, query, prompt, limit=50, score_cutoff=15):

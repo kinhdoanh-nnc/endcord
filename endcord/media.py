@@ -2,7 +2,6 @@
 # Source-available under the Endcord License. See LICENSE for terms.
 # Redistribution of modified versions is not permitted.
 
-import importlib.util
 import logging
 import os
 import re
@@ -210,12 +209,14 @@ def img_to_term_block_truecolor(data, bg_color, screen_width, screen_height, img
 
 
 # use cython if available, ~5 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.media"):
+try:
     from endcord_cython.media import (
         img_to_term,
         img_to_term_block,
         img_to_term_block_truecolor,
     )
+except ImportError:
+    pass
 
 # get speaker
 if have_soundcard:
@@ -774,7 +775,7 @@ class TerminalMedia():
             while self.run:   # dont exit when video ends
                 time.sleep(0.2)
         except Exception as e:
-            logger.error("".join(traceback.format_exception(e)))
+            logger.exception("Error playing media:")
             if self.external:
                 print("".join(traceback.format_exception(e)))
         terminal_utils.leave_tui()

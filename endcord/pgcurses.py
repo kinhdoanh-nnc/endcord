@@ -500,8 +500,10 @@ def render(screen, buffer, dirty_lines, dirty_lock, ncols, char_width, char_heig
 
 
 # use cython if available, ~1.5 times faster insstr and ~1.3 times faster render
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.pgcurses"):
+try:
     from endcord_cython.pgcurses import insstr, render
+except ImportError:
+    pass
 
 
 class Window:

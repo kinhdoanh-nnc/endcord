@@ -568,9 +568,11 @@ def img_to_term_block_truecolor(data, bg_color, screen_width, screen_height, img
 
 
 # use cython if available, ~1.7 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.media"):
+try:
     from endcord_cython.media import (
         img_to_term,
         img_to_term_block,
         img_to_term_block_truecolor,
     )
+except ImportError:
+    pass

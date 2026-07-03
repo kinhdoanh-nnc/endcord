@@ -3,7 +3,6 @@
 # Redistribution of modified versions is not permitted.
 
 import curses
-import importlib.util
 import logging
 import re
 import time
@@ -42,6 +41,7 @@ match_escaped_md = re.compile(r"\\(?=[^a-zA-Z\d\s])")
 match_md_spoiler = re.compile(r"(?<!\\)\|\|.+?\|\|")
 match_md_code_snippet = re.compile(r"(?<!`|\\)`[^`]+`")
 match_md_code_block = re.compile(r"(?s)```(.*?)```")
+match_md_url = re.compile(r"(?<!\\)\[([^\]]+)\]\(([^)]+)\)")
 match_url = re.compile(r"https?:\/\/[\w.-]+(\.[\w-])+[^\s)\]>]*[^\s).\]>]")
 match_discord_channel_url = re.compile(r"https:\/\/discord(?:app)?\.com\/channels\/(\d*)\/(\d*)(?:\/(\d*))?")
 match_sticker_id = re.compile(r"<;\d+;>")
@@ -405,7 +405,7 @@ def fix_map_ranges(map_ranges, text):
 
 
 # use cython if available, ~6 times faster
-if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endcord_cython.formatter"):
+try:
     from endcord_cython.formatter import (
         fix_line_format,
         fix_map_ranges,
@@ -416,7 +416,7 @@ if importlib.util.find_spec("endcord_cython") and importlib.util.find_spec("endc
         split_index_wch,
     )
     init_wide_ranges(WIDE_RANGES)
-else:
+except ImportError:
     fix_line_format = fix_line_format_py
 
 
@@ -799,6 +799,66 @@ def replace_code_blocks(text, *ranges_lists):
     return "".join(result), code_snippet_ranges
 
 
+def replace_bracketed_urls(text):
+    """Find <https://...> and remove < > from it"""
+    result = []
+    last_pos = 0
+    pos = 0
+    while True:
+        start = text.find("<https://", pos)
+        if start == -1 or text[start-1] == "\\":
+            break
+        end = text.find(">", start)
+        if end == -1:
+            pos = start + 1
+            continue
+        result.append(text[last_pos:start])
+        result.append(text[start + 1 : end])
+        last_pos = end + 1
+        pos = last_pos
+    result.append(text[last_pos:])
+    return "".join(result)
+
+
+def replace_markdown_urls(text, except_ranges, *ranges_lists):
+    """Replace [text](url) and [text](<url>) with text and return it as url range"""
+    result = []
+    url_ranges = []
+    last_pos = 0
+    offset = 0
+
+    for match in re.finditer(match_md_url, text):
+        start, end = match.span()
+        skip = False
+        for except_range in chain(*except_ranges):
+            start_r = except_range[0]
+            end_r = except_range[1]
+            if start > start_r and start < end_r and end > start_r and end < end_r:
+                skip = True
+                break
+        if skip:
+            continue
+        new_text = match.group(1)
+        url = match.group(2).strip("<>")
+        if not match_url.match(url):   # verify url
+            continue
+        result.append(text[last_pos:start])
+        result.append(new_text)
+
+        new_start = start + offset
+        new_end = new_start + len(new_text)
+        url_ranges.append([new_start, new_end, url])
+
+        diff = len(new_text) - (end - start)
+        if diff != 0:
+            shift_ranges(ranges_lists, new_start, diff)
+        offset += diff
+        last_pos = end
+
+    result.append(text[last_pos:])
+    return "".join(result), url_ranges
+
+
 def replace_spoilers(line):
     """Replace spoiler: ||content|| with ACS_BOARD characters"""
     for _ in range(20):   # safety limit
@@ -811,7 +871,7 @@ def replace_spoilers(line):
     return line
 
 
-def replace_escaped_md(line, except_ranges=[]):
+def replace_escaped_md(line, except_ranges=()):
     r"""
     Replace escaped markdown characters.
     eg "\:" --> ":"
@@ -821,7 +881,7 @@ def replace_escaped_md(line, except_ranges=[]):
     for match in re.finditer(match_escaped_md, line):
         start, end = match.span()
         skip = False
-        for except_range in except_ranges:
+        for except_range in chain(*except_ranges):
             start_r = except_range[0]
             end_r = except_range[1]
             if start > start_r and start < end_r and end > start_r and end < end_r:
@@ -856,7 +916,7 @@ def generate_count(count):
     return " (99+)"
 
 
-def format_md_all(line, content_start, except_ranges):
+def format_md_all(line, content_start, except_ranges=()):
     """
     Replace all supported formatted markdown strings and return list of their formats.
     This should be called only after curses has initialized color.
@@ -884,7 +944,7 @@ def format_md_all(line, content_start, except_ranges):
         start = string_match.start() + content_start
         end = string_match.end() + content_start
         skip = False
-        for except_range in except_ranges:
+        for except_range in chain(*except_ranges):
             start_r = except_range[0]
             end_r = except_range[1]
             # if this match is inside excepted range
@@ -1637,13 +1697,15 @@ class ChatGenerator:
                     content = ref_message["content"]
                     if self.emoji_as_text:
                         content = utils.demojize(content)
-                    content, _ = replace_escaped_md(content)
+                    content = replace_bracketed_urls(content)
                     content = replace_spoilers(content)
                     content, _ = replace_mentions(content, ref_message["mentions"], global_name=self.use_global_name, use_nick=self.use_nick)
                     content, _ = replace_roles(content, roles)
                     content = replace_discord_url(content)
                     content, _ = replace_channels(content, channels)
                     content, _ = replace_timestamps(content, self.convert_timezone)
+                    content, _ = replace_markdown_urls(content, ())
+                    content, _ = replace_escaped_md(content)
                     content, emoji_ranges = replace_discord_emoji(content, self.placeholder_emoji)
                 if reply_embeds:
                     for embed in reply_embeds:
@@ -1752,6 +1814,7 @@ class ChatGenerator:
             content = message["content"]
             if self.emoji_as_text:
                 content = utils.demojize(content)
+            content = replace_bracketed_urls(content)
             content, emoji_ranges = replace_discord_emoji(content, self.placeholder_emoji)
             content, mention_ranges = replace_mentions(content, message["mentions"], emoji_ranges, global_name=self.use_global_name, use_nick=self.use_nick)
             content, role_ranges = replace_roles(content, roles, emoji_ranges, mention_ranges)
@@ -1761,6 +1824,7 @@ class ChatGenerator:
             content, timestamp_ranges = replace_timestamps(content, self.convert_timezone, emoji_ranges, mention_ranges, channel_ranges)
             content, code_snippets = replace_code_snippets(content, emoji_ranges, mention_ranges, channel_ranges, timestamp_ranges)
             content, code_blocks = replace_code_blocks(content, emoji_ranges, mention_ranges, channel_ranges, timestamp_ranges, code_snippets)
+            content, urls = replace_markdown_urls(content, (code_snippets, code_blocks), emoji_ranges, mention_ranges, channel_ranges, timestamp_ranges, code_snippets)
             shift_ranges_all(
                 pre_content_len,
                 emoji_ranges,
@@ -1769,6 +1833,7 @@ class ChatGenerator:
                 timestamp_ranges,
                 code_snippets,
                 code_blocks,
+                urls,
             )
             if content.startswith("> "):
                 content = self.quote_character + " " + content[2:]
@@ -1780,6 +1845,7 @@ class ChatGenerator:
             timestamp_ranges = []
             code_snippets = []
             code_blocks = []
+            urls = []
         image_locations = []
         embed_marker_ranges = []
         for num_e, embed in enumerate(message["embeds"]):
@@ -1862,8 +1928,7 @@ class ChatGenerator:
         message_line = lazy_replace(message_line, "%app", lambda: app_string if app_string else "")
         message_line = message_line.replace("%content", content)
 
-        # find all urls
-        urls = []
+        # find all non-markdown urls
         if self.color_chat_url:
             for match in re.finditer(match_url, message_line):
                 start, end = match.span()
@@ -1875,7 +1940,10 @@ class ChatGenerator:
                         skip = True
                         break
                 if not skip:
-                    urls.append([start, end])
+                    urls.append([start, end, match.group()])
+        urls = sorted(urls, key=lambda x: x[0])
+        for idx, url in enumerate(urls):
+            url[2] = idx
 
         # find spoilers - must be after all other replacements
         spoilers = []
@@ -1886,7 +1954,7 @@ class ChatGenerator:
             spoilers = [value for i, value in enumerate(spoilers) if i not in spoiled]   # exclude spoiled messages
 
         # find all markdown and correct format indexes
-        message_line, md_format, md_indexes = format_md_all(message_line, pre_content_len, code_snippets + code_blocks + urls)
+        message_line, md_format, md_indexes = format_md_all(message_line, pre_content_len, (code_snippets, code_blocks, urls))
         if md_indexes:
             move_by_indexes(
                 md_indexes,
@@ -1900,7 +1968,7 @@ class ChatGenerator:
                 timestamp_ranges,
                 embed_marker_ranges,
             )
-        message_line, escaped_indexes = replace_escaped_md(message_line, code_snippets + code_blocks + urls)
+        message_line, escaped_indexes = replace_escaped_md(message_line, (code_snippets, code_blocks, urls))
 
         # correct format indexes for removed markdown escape characters "\"
         if escaped_indexes:
@@ -3149,12 +3217,14 @@ def generate_extra_window_search(query, messages, roles, channels, blocked, tota
                 if emoji_as_text:
                     content = utils.demojize(content)
                 content = replace_spoilers(content)
+                content = replace_bracketed_urls(content)
                 content, _ = replace_discord_emoji(content)
                 content, _ = replace_mentions(content, message["mentions"], global_name=use_global_name, use_nick=use_nick)
                 content, _ = replace_roles(content, roles)
                 content = replace_discord_url(content)
                 content, _ = replace_channels(content, channels)
                 content, _ = replace_timestamps(content, convert_timezone)
+                content, _ = replace_markdown_urls(content, ())
 
             for embed in message["embeds"]:
                 if embed["url"] and not embed.get("hidden") and embed["url"] not in content:
@@ -3472,12 +3542,14 @@ def generate_message_notification(data, channels, roles, guild_name, my_data, co
 
     if data["content"]:
         body = replace_spoilers(data["content"])
+        content = replace_bracketed_urls(body)
         body, _ = replace_discord_emoji(body)
         body, _ = replace_mentions(body, data["mentions"] + [my_data], global_name=use_global_name, use_nick=use_nick)
         body, _ = replace_roles(body, roles)
         body = replace_discord_url(body)
         body, _ = replace_channels(body, channels)
         body, _ = replace_timestamps(body, convert_timezone)
+        content, _ = replace_markdown_urls(body, ())
     elif data.get("embeds"):
         num = len(data["embeds"])
         if num == 1:

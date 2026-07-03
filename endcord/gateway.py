@@ -1473,8 +1473,6 @@ class Gateway():
                                 "topic": summary["topic"],
                                 "description": summary["summ_short"],
                             })
-                        else:
-                            logger.warning(f"Unhandled summary type\n{json.dumps(summary)}")
 
                 elif optext == "USER_SETTINGS_PROTO_UPDATE":
                     if data["partial"] or data["settings"]["type"] != 1:
