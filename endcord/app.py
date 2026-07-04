@@ -225,7 +225,8 @@ class Endcord:
         if config["client_properties"].lower() == "anonymous":
             client_prop = client_properties.get_anonymous_properties()
         else:
-            client_prop = client_properties.get_default_properties()
+            android = config["client_properties"].lower() == "android"
+            client_prop = client_properties.get_default_properties(android)
         if config["custom_user_agent"]:
             client_prop = client_properties.add_user_agent(client_prop, config["custom_user_agent"])
         client_prop_gateway = client_properties.add_for_gateway(client_prop)

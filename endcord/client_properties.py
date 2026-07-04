@@ -32,6 +32,8 @@ elif sys.platform == "win32":
     operating_system = "Windows"
 elif sys.platform == "darwin":
     operating_system = "Mac OS X"
+# elif sys.platform == "android":
+#     operating_system = "Android"
 else:
     operating_system = "Linux"
 
@@ -43,10 +45,10 @@ else:
     system_locale = "en_US"
 
 
-def get_os_version():
+def get_os_version(android):
     """ Get OS version and architecture"""
     arch = "x64"
-    if sys.platform == "linux":
+    if sys.platform == "linux" or (sys.platform == "android" and not android):
         os_version = subprocess.check_output(["uname", "-r"], text=True).strip()
     elif sys.platform == "win32":
         win_ver = sys.getwindowsversion()
@@ -55,6 +57,9 @@ def get_os_version():
         output = subprocess.check_output(["sw_vers"], text=True)
         os_version = output.split("\n")[1].split(":\t")[1]
         arch = "arm64"   # guessing
+    elif android:
+        output = subprocess.run(["getprop", "ro.build.version.sdk"], capture_output=True, text=True, check=False).stdout
+        os_version = output if output else "34"
     else:
         os_version = ""
     return os_version, arch
@@ -91,16 +96,19 @@ def get_anonymous_properties():
     return add_user_agent(data, user_agent)
 
 
-def get_default_properties():
+def get_default_properties(android=False):
     """
     Get default client properties which might look less suspicious to discord.
     This is approximately what desktop client sends.
+    Alternativel convert to android properties.
     """
-    os_version, arch = get_os_version()
-
+    global operating_system
+    os_version, arch = get_os_version(android)
+    if android:
+        operating_system = "Android"
     data = {
         "os": operating_system,
-        "browser": "Discord Client",
+        "browser": "Discord Client" if not android else "Discord Android",
         "release_channel": "stable",
         "os_version": os_version,
         "os_arch": arch,

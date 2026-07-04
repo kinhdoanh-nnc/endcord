@@ -216,8 +216,9 @@ Note: always put string in `""`. To use `"` inside the string escape it like thi
 -  `client_properties = "default"`  
     Client properties are used by discord in spam detection system.  
     They contain various system information like operating system and browser user agent. Available options:
-    - `"default"` - Approximately what official desktop client sends. Includes: OS version, architecture, Linux window manager, locale.  
-    - `"anonymous"` - Approximately what official web client sends. But there is higher risk to trigger spam heuristics.  
+    - `"default"` - Approximately what official desktop client sends. Includes: OS version, architecture, Linux window manager, locale.
+    - `"anonymous"` - Approximately what official web client sends. But there is higher risk to trigger spam heuristics.
+    - `"android"` - Default but modified to look like android device. Other users will see this client as mobile phone device.
 - `custom_user_agent = None`  
     Custom [user agent string](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent) for `client_properties`.  
     Default user agent is Firefox for `"anonymous"` and discord desktop client for `default` client properties.  
