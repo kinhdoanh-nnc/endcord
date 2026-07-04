@@ -23,7 +23,6 @@ Video, stage and stream calls
 Localization
 
 EXTENSIONS:
-endcord-termux-rich
 endcord-custom-emoji
 endcord-undelete
 endcord-message-replace

@@ -145,7 +145,6 @@ Key combinations are saved as custom syntax (very similar to emacs), that can be
 Syntax: `Mod1-Mod2-Mod3-Key`. Mod2 and Mod3 are optional.  
 Modifiers: `C` - Ctrl, `M` - Alt, `S` - Shift. Keys can be uppercase and lowercase, uppercase doesn't indicate shift.  
 Special keys: `UP`/`DOWN`/`LEFT`/`RIGHT` - arrow keys, `"ENTER"`.  
-`Alt+Key` codes are stored as string with format: `"ALT+[KEY]"`, where `[KEY]` is integer.  
 `Ctrl+Shift+Key` combinations are not supported by most terminal emulators, but `Alt+Shift+Key` are.  
 Keybindings can also be chained like this (maximum 2 bindings in chain, separated with space ` `):  
 `"C-y M-e"` which means: press `Ctrl+Y` then `Alt+E`, or `"C-y S-UP"`...  

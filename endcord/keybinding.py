@@ -477,6 +477,9 @@ def picker_internal(screen, keybindings, command_bindings, fallback):
             key_code = get_key_fallback(screen, backspace_code)
         else:
             key_code = get_key(screen, backspace_code)
+        logger.info(key_code)
+        if key_code == -1:
+            continue
         if key_code == curses.KEY_RESIZE:
             screen.addstr(1, 0, MESSAGE)
         text = f"Keybinding code: {key_code}"
