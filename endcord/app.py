@@ -44,11 +44,10 @@ from endcord import (
 from endcord.assist_data import ABOUT, COMMAND_ASSISTS, SEARCH_HELP_TEXT
 from endcord.message import GIF_PROVIDERS
 
-support_media = (
-    importlib.util.find_spec("av") is not None and
-    importlib.util.find_spec("PIL") is not None
-)
+support_image = importlib.util.find_spec("PIL") is not None
+support_media = support_image and importlib.util.find_spec("av") is not None
 support_call = (
+    support_media and
     importlib.util.find_spec("dave") is not None and
     importlib.util.find_spec("nacl") is not None
 )
@@ -175,15 +174,13 @@ class Endcord:
         self.downloads_path = os.path.expanduser(downloads_path)
         if self.notification_path:
             self.notification_path = os.path.expanduser(self.notification_path)
-        if not support_media:
-            config["native_media_player"] = True
         self.colors = color.extract_colors(config)
         self.colors_formatted = color.extract_colors_formatted(config)
         self.default_msg_color = self.colors_formatted[0][0][:]
         self.default_msg_alt_color = self.colors[1]
 
         # write build info to log
-        logger.info(f"Build info:\n  {utils.get_build_info(cythonized, uses_pgcurses, support_media, support_call)}")
+        logger.info(f"Build info:\n  {utils.get_build_info(cythonized, uses_pgcurses, support_image, support_media, support_call)}")
 
         # variables
         self.run = False
@@ -367,7 +364,7 @@ class Endcord:
 
 
     def exit(self, fast=True, force=True):
-        """End current session allowing main thread to return to main.py, if not fast wait for all running threds to stop"""
+        """End current session allowing main thread to return to main.py, if not fast wait for all running threads to stop"""
         try:
             if not force:
                 self.update_extra_line("Stopping all threads...", timed=False)
@@ -543,7 +540,7 @@ class Endcord:
 
 
     def profiling_auto_exit(self):
-        """Thread that waits then exits cleanly, so profiler (vprof) can process data"""
+        """Thread that waits then exits cleanly, so profiler can process data"""
         time.sleep(20)
         self.exit()
 
@@ -1344,7 +1341,7 @@ class Endcord:
 
 
     def insert_into_input_store(self, text):
-        """Insert toext at cursor position for current channel input store"""
+        """Insert text at cursor position for current channel input store"""
         for num, channel in enumerate(self.input_store):
             if channel["id"] == self.active_channel["channel_id"]:
                 input_text = self.input_store[num]["content"]
@@ -1494,7 +1491,7 @@ class Endcord:
                     self.channel_cache[num][2] = add_tab   # pin/unpin
                     self.channel_cache[num][3] = False
                     if add_tab:
-                        # move to after curernt idx
+                        # move to after current idx
                         for current_idx, channel_i in enumerate(self.channel_cache):
                             if channel_i[0] == active_channel_id:
                                 break
@@ -2357,7 +2354,7 @@ class Endcord:
                                 if item[0] <= mouse_x < item[1] + item[0]:
                                     clicked_type = 10
                                     clicked_id = item[2]
-                            if ranges[1]:   # spoiler (owerwries all previous)
+                            if ranges[1]:   # spoiler (overwrites all previous)
                                 for num, item in enumerate(ranges[1]):
                                     if item[0] <= mouse_x < item[1]:
                                         clicked_type = 6
@@ -2869,10 +2866,10 @@ class Endcord:
                     self.restore_input_text = (input_text, "standard")
                     slowmode_time = self.slowmode_times[self.active_channel["channel_id"]]
                     self.update_extra_line(f"Slowmode is enabled, will be able to send message in {slowmode_time} s", color=19)
-                    # dont allow sending messagee until it expires
+                    # dont allow sending message until it expires
 
                 elif not self.disable_sending and not self.forum:
-                    # check for substituition
+                    # check for substitution
                     if input_text.startswith("s/"):
                         self.substitute_in_last_message(input_text)
                         continue
@@ -3088,7 +3085,7 @@ class Endcord:
                 self.update_extra_line("Restart needed for changes to take effect", color=self.colors[9])
                 self.config = config.update_config(self.config, key, value)
             else:
-                self.update_extra_line("Unknow settings key", color=self.colors[9])
+                self.update_extra_line("Unknown settings key", color=self.colors[9])
 
         elif cmd_type == 2:   # BOTTOM
             self.go_bottom()
@@ -4036,7 +4033,7 @@ class Endcord:
             else:
                 self.update_extra_line("Game detection service is disabled or not running")
 
-        elif cmd_type == 62:   # OPEN_CINFIG_DIR
+        elif cmd_type == 62:   # OPEN_CONFIG_DIR
             peripherals.native_open(os.path.expanduser(peripherals.config_path))
 
         elif cmd_type == 63:   # SEND_MESSAGE
@@ -4550,13 +4547,13 @@ class Endcord:
 
 
     def smart_paste(self):
-        """Paste text and files and add them as attachmemnts, paste too long text as attachment"""
+        """Paste text and files and add them as attachments, paste too long text as attachment"""
         if self.forum:
             return
         paths = []
         if shutil.which("xclip") or shutil.which("wl-paste"):
             paths = peripherals.paste_clipboard_files(peripherals.temp_path)
-        elif support_media:
+        elif support_image:
             paths = peripherals.pillow_paste_image()
         else:
             self.update_extra_line("No media support", color=20)
@@ -4699,7 +4696,7 @@ class Endcord:
 
 
     def get_msg_embeds(self, msg_index, media_only=True, stickers=True):
-        """Get all palyable media embeds and stickers from message in chat"""
+        """Get all playable media embeds and stickers from message in chat"""
         urls = []
         for embed in self.messages[msg_index]["embeds"]:
             media_type = embed["type"].split("/")[0]
@@ -4826,7 +4823,7 @@ class Endcord:
 
 
     def substitute_in_last_message(self, input_text):
-        """Try to perform s/ substitutiion in last sent message of this user, if the message is in current buffer"""
+        """Try to perform s/ substitution in last sent message of this user, if the message is in current buffer"""
         for message in self.messages:
             if message["user_id"] == self.my_id:
                 message_id = message["id"]
@@ -5585,7 +5582,7 @@ class Endcord:
         self.tui.set_selected(-1)
         self.tui.update_chat(self.chat, self.chat_format)
 
-        # start log watche thread
+        # start log watcher thread
         if not self.log_queue_manager:
             threading.Thread(target=self.log_watcher, daemon=True, args=(log, )).start()
 
@@ -6456,22 +6453,21 @@ class Endcord:
                     time.sleep(0.1)
                     self.tui.resume_curses()
                 return
-        if support_media and not self.config["native_media_player"] and not uses_pgcurses and not force_native:
+        if support_image and not self.config["native_media_player"] and not uses_pgcurses and not force_native:
             if not self.terminal_media:
                 from endcord import media
                 self.terminal_media = media.TerminalMedia(self.config, self.keybindings, font_ratio=self.font_ratio)
             self.update_extra_line()
             self.tui.pause_curses()
-            self.terminal_media.play(path, loop=loop)
-            time.sleep(0.1)
-            self.tui.resume_curses()
-        else:
-            if shutil.which(self.config["yt_dlp_path"]) and shutil.which(self.config["mpv_path"]):
-                mpv_path = self.config["mpv_path"]
-            else:
-                mpv_path = ""
-            self.update_extra_line("Media will be opened in native app")
-            peripherals.native_open(path, mpv_path, yt_in_mpv=self.config["yt_in_mpv"])
+            open_native = self.terminal_media.play(path, loop=loop)
+            if not open_native:
+                time.sleep(0.1)
+                self.tui.resume_curses()
+                return
+        # fallback to open in native
+        mpv_path = self.config["mpv_path"] if shutil.which(self.config["mpv_path"]) else ""
+        self.update_extra_line("Media will be opened in native app")
+        peripherals.native_open(path, mpv_path, yt_in_mpv=(self.config["yt_in_mpv"] and shutil.which(self.config["yt_dlp_path"])))
 
 
     def update_chat(self, keep_selected=True, change_amount=0, select_message_index=None, scroll=True, select_unread=False, change_id=None, change_type=None):
@@ -7068,7 +7064,7 @@ class Endcord:
         Set channel/category/guild as seen if it is not already seen.
         Force will set even if its not marked as unseen, used for active channel.
         """
-        # check chanels
+        # check channels
         channel = self.read_state.get(target_id)
         if channel and channel["last_message_id"] and int(channel["last_acked_message_id"]) < int(channel["last_message_id"]):
             self.set_channel_seen(target_id)
@@ -8118,7 +8114,7 @@ class Endcord:
 
 
     def update_call_extra_line(self):
-        """Update extra line shown when in call, eg on call participants change"""
+        """Update extra line shown when in call, eg. on call participants change"""
         if not self.voice_gateway:
             return
         self.permanent_extra_line, self.permanent_extra_line_format = formatter.generate_extra_line_call(
@@ -8715,7 +8711,7 @@ class Endcord:
 
             # voice gateway stuff
             if self.voice_gateway:
-                # check if voice call disconnected with errror
+                # check if voice call disconnected with error
                 if not self.voice_gateway.run:
                     # if it errored there will still be self.voice_gateway but it wont be running
                     self.leave_call()
@@ -8992,7 +8988,7 @@ class Endcord:
                             self.my_commands, self.my_apps = self.discord.get_my_commands()
                             if self.active_channel["guild_id"]:
                                 self.guild_commands, self.guild_apps = self.discord.get_guild_commands(self.active_channel["guild_id"])
-                                # permissions depend on channel so they myt be computed each time
+                                # permissions depend on channel so they must be computed each time
                                 self.guild_commands_permitted = perms.compute_command_permissions(
                                     self.guild_commands,
                                     self.guild_apps,

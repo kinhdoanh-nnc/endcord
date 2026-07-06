@@ -4,7 +4,6 @@
 
 import curses
 import glob
-import importlib
 import logging
 import os
 import queue
@@ -37,7 +36,7 @@ def freed_vertical_segments(old_rects, new_rects_y):
                 continue
             if occ_start >= old_end:
                 break
-            if occ_start > cursor:   # start segnemt
+            if occ_start > cursor:   # start segment
                 to_clear.append((ox, cursor, ow, occ_start - cursor))
             cursor = max(cursor, occ_end)
         if cursor < old_end:   # end segment
@@ -239,7 +238,7 @@ class InlineMedia:
                     continue
                 if occupied_start >= old_end:
                     break
-                if occupied_start > new_y:   # start segnemt
+                if occupied_start > new_y:   # start segment
                     to_clear.append((new_y, occupied_start, x, w, mention_old))
                 new_y = max(new_y, occupied_end)
             if new_y < old_end:   # end segment
@@ -268,7 +267,7 @@ class InlineMedia:
 
 
     def draw_selection(self, pos):
-        """Draaw selection line around images"""
+        """Draw selection line around images"""
         chat_y, chat_x = self.tui.win_chat.getbegyx()
         chat_h, chat_w = self.tui.chat_hw
         for data, rel_y, rel_x, h, w, draw, _ in self.image_cache.values():

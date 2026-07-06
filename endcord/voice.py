@@ -175,7 +175,7 @@ class Gateway():
 
 
     def send_ip_discovery(self):
-        """Send ip discorvery packet to the server"""
+        """Send ip discovery packet to the server"""
         packet = bytearray(74)
         struct.pack_into(">H", packet, 0, 1)   # type = 1 (request)
         struct.pack_into(">H", packet, 2, 70)   # length = 70
@@ -200,7 +200,7 @@ class Gateway():
             # ssrc = struct.unpack_from(">I", data, 4)[0]
             self.client_ip = data[8:72].split(b"\x00", 1)[0].decode("ascii")
             self.client_port = struct.unpack_from(">H", data, 72)[0]
-            logger.debug("Rceived IP discovery packet")
+            logger.debug("Received IP discovery packet")
         except socket.timeout:
             logger.error(f"Failed to receive IP discovery: timeout after {UDP_TIMEOUT} s")
             self.disconnect()
@@ -223,7 +223,7 @@ class Gateway():
             )
             self.voice_handler.start()
 
-        while self.ssrc_cache:   # load cached ssrc-id pairs received before voice handler was initialised
+        while self.ssrc_cache:   # load cached ssrc-id pairs received before voice handler was initialized
             ssrc, user_id = self.ssrc_cache.pop()
             self.voice_handler.add_ssrc_mapping(ssrc, user_id)
 
@@ -835,7 +835,7 @@ class VoiceHandler:
 
 
     def receiver_loop(self):
-        """Receive data, unpack, transport decrypt, DAVE decrypt, opus decoee, and put it to queue"""
+        """Receive data, unpack, transport decrypt, DAVE decrypt, opus decode, and put it to queue"""
         while self.run:
             # receive
             try:

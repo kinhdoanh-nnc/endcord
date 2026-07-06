@@ -46,7 +46,7 @@ Any third party endcord forks may add features that can lead to account ban, con
     - Show channels with mention as red with number of mentions
     - Collapse categories and servers
     - DMs in separate drop-down, show DM status
-    - Forums, imageborads and threadsthread channels
+    - Forums, imageborads and thread channels
     - Folders with custom naming
 - Show reactions, replied message, forwarded message
 - Show embeds, attachment types and links, code blocks
@@ -124,7 +124,7 @@ Manager can be re-opened using `--manager` flag.
 - Scan QR code - note that some terminals may fail to render QR code
 - Token - used to access Discord through your account without logging-in
 - Token as an argument: `endcord -t [YOUR_TOKEN]`, but note that it might get saved in your terminal history file  
-Email or QR code login may fail because captcha is requested by Discord. In that case first login and complete captcha through official client, from same IP address, then try again. If it still fails, then youll have to use token method.  
+Email or QR code login may fail because captcha is requested by Discord. In that case first login and complete captcha through official client, from same IP address, then try again. If it still fails, then you'll have to use token method.  
 If you want to verify what is happening with credentials, look in profile_manager.py and auth.py.  
 **Do not share your token!**  
 
@@ -175,7 +175,7 @@ If `native_file_dialog` is set to `True` in config, it will open system native f
 Type path to file that should be uploaded and press enter. Cached content will be restored.  
 Wait until file is uploaded and then send the message. Multiple files can be added this way.  
 Path can be absolute or relative, and has autocomplete on `tab` key.  
-If file size exceeds discord's limit it will not be added to the sent message.  
+If file size exceeds Discords limit it will not be added to the sent message.  
 Attachments can be navigated with `Ctrl+Left/Right` in popup line (above status line).  
 `Ctrl+X` will cancel ALL downloads and attachments, with a confirmation prompt.  
 `Ctrl+K` will cancel selected attachment (and stop upload) and remove it from attachments list.
@@ -308,7 +308,7 @@ After first run in experimental mode, extra config will be generated in endcord 
 ### Custom hosts
 Connecting to other discord-like instance can be configured in `config.ini` by setting `custom_host = ` to preferred host domain. Set to `None` to use default host (`discord.com`) or use `--custom-host=` command argument.  
 But endcord may crash at any time. Further, each host may have different spam filters, so **use at your own risk** still applies.  
-Wether endcord will work or crash depends on hosts api implementation, the more different from discord it is, greater is the risk of a crash. If endcord crashes - its hosts fault. Do not report bugs related to this.
+Whether endcord will work or crash depends on hosts api implementation, the more different from discord it is, greater is the risk of a crash. If endcord crashes - its hosts fault. Do not report bugs related to this.
 
 ### Termux
 Endcord cant be built in termux, so to run it: first install python >= 3.12 and `uv`, then clone this repo, cd to folder and run it from source: `uv run main.py` (it will take some time to download and build numpy and orjson). To skip waiting for some dependencies, or if it fails building them run: `uv remove numpy soundcard soundfile orjson pycryptodome`.  
@@ -534,7 +534,7 @@ RAM usage greatly depends on multiple factors:
 Simply make the launcher execute `endcord` or `endcord-lite`, endcord will deal with starting terminal. It will prefer `$TERMINAL` environment variable, then fallback to some most popular terminal emulators.
 
 ### Legacy theme
-Endcord default theme uses non-standard characters to display som TUI elements, and these characters may not work on some terminals, or look weird wih some fonts.  
+Endcord default theme uses non-standard characters to display some TUI elements, and these characters may not work on some terminals, or look weird wih some fonts.  
 If that happens, use [legacy theme](themes/legacy.ini). It is used by default on windows.  
 
 ### Virus scanners are flagging endcord binaries as malware

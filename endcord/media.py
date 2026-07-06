@@ -14,9 +14,15 @@ import time
 import traceback
 from queue import Queue
 
-import av
 import filetype
 from PIL import Image, ImageEnhance
+
+try:
+    import av
+    video_support = True
+except ImportError:
+    video_support = False
+
 
 # safely import soundcard, in case there is no sound system
 try:
@@ -422,7 +428,7 @@ class TerminalMedia():
             img = background
 
         if self.truecolor:
-            # ensure ts rgb
+            # ensure its rgb
             img = img.convert("RGB")
         else:
             # apply xterm256 palette
@@ -658,7 +664,7 @@ class TerminalMedia():
                 audio_ready.clear()
 
         # prepare video
-        video_thread = threading.Thread(target=self.video_player, args=(self.video_queue, self.audio_queue, frame_duration, not(have_audio)), daemon=True)
+        video_thread = threading.Thread(target=self.video_player, args=(self.video_queue, self.audio_queue, frame_duration, not (have_audio)), daemon=True)
         video_thread.start()
 
         while self.playing:
@@ -744,6 +750,10 @@ class TerminalMedia():
             if yt_match:
                 self.play_youtube(yt_match.group())
             elif "https://" in path:
+                if not video_support:
+                    self.run = False
+                    self.playing = False
+                    return True
                 self.media_type = "video"
                 self.start_ui_thread(loop)
                 self.play_video(path)
@@ -759,10 +769,18 @@ class TerminalMedia():
                         self.media_type = "img"
                         self.play_img(path)
                 elif mime[0] == "video":
+                    if not video_support:
+                        self.run = False
+                        self.playing = False
+                        return True
                     self.media_type = "video"
                     self.start_ui_thread(loop)
                     self.play_video(path, loop)
                 elif mime[0] == "audio":
+                    if not video_support:
+                        self.run = False
+                        self.playing = False
+                        return True
                     self.media_type = "audio"
                     self.start_ui_thread(loop)
                     self.play_audio(path, loop=loop)

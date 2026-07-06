@@ -110,7 +110,7 @@ class Downloader:
                 if response.status in (301, 302, 303, 307, 308):
                     redirect_url = response.getheader("Location")
                     if not redirect_url:
-                        logger.error("Redirect without lcation")
+                        logger.error("Redirect without location")
                         break
                     current_url = urllib.parse.urljoin(current_url, redirect_url)
                     redirects += 1
