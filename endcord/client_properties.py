@@ -100,7 +100,7 @@ def get_default_properties(android=False):
     """
     Get default client properties which might look less suspicious to discord.
     This is approximately what desktop client sends.
-    Alternativel convert to android properties.
+    Alternatively convert to android properties.
     """
     global operating_system
     os_version, arch = get_os_version(android)
@@ -135,7 +135,7 @@ def get_default_properties(android=False):
 
 
 def generate_launch_signature():
-    """Gebnerate launch singature"""
+    """Generate launch signature"""
     bits = 0b00000000100000000001000000010000000010000001000000001000000000000010000010000001000000000100000000000001000000000000100000000000
     launch_signature = uuid.uuid4().int & (~bits & ((1 << 128) - 1))
     return str(uuid.UUID(int=launch_signature))
@@ -171,7 +171,7 @@ def add_user_agent(data, user_agent):
         if match:
             browser_version = match.group(1)
     elif "Electron" in user_agent:
-        match = re.search(r"Elelctron/([\d\.]+)", user_agent)
+        match = re.search(r"Electron/([\d\.]+)", user_agent)
         if match:
             browser_version = match.group(1)
     else:
@@ -215,9 +215,9 @@ def encode_properties(data):
     return base64.b64encode(json.dumps(data, separators=(",", ":")).encode("utf-8")).decode("utf-8")
 
 
-def get_user_agent(anonymous=False):
+def get_user_agent(anonymous=False, android=False):
     """Get only user agent string"""
     if anonymous:
         return adjust_user_agent_os(USER_AGENT_WEB, sys.platform, None)
-    os_version, _ = get_os_version()
+    os_version, _ = get_os_version(android)
     return adjust_user_agent_os(USER_AGENT_DESKTOP, sys.platform, os_version)

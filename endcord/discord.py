@@ -174,7 +174,7 @@ class Discord():
 
 
     def check_expired_attachment_url(self, url):
-        """Check if provided url is attachment and return its querys"""
+        """Check if provided url is attachment and return its queries"""
         parsed_url = urllib.parse.urlsplit(url)
         if self.cdn_host in parsed_url.netloc or (self.cdn_host == DISCORD_CDN_HOST and DYN_DISCORD_CDN_HOST in parsed_url.netloc):
             return dict(urllib.parse.parse_qsl(parsed_url.query))
@@ -2037,7 +2037,7 @@ class Discord():
     def bot_register_command(self, command, guild_id=None, is_json=False):
         """
         Register command for this bot. This endpoint works ONLY FOR BOTS.
-        command object coresponds to this structure:
+        command object corresponds to this structure:
         https://docs.discord.com/developers/interactions/application-commands#application-command-object
         To obtain role ids for specific guild, run "dump_roles" endcord command while inside desired guild.
         """

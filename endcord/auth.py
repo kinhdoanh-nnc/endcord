@@ -240,7 +240,7 @@ class Discord():
 
 
     def verify_mfa(self, auth_type, code, login_instance_id, ticket):
-        """Verify multi-factore authentication and get token"""
+        """Verify multi-factor authentication and get token"""
         message_dict = {
             "code": code,
             "login_instance_id": login_instance_id,
@@ -393,7 +393,7 @@ class Gateway():
 
 
     def decrypt_user_payload(self, user_payload):
-        """Decrypt user playload received when remote authentication session starts"""
+        """Decrypt user payload received when remote authentication session starts"""
         cipher = PKCS1_OAEP.new(self.private_key, hashAlgo=SHA256)
         user_payload_bytes = cipher.decrypt(base64.b64decode(user_payload))
         user_id, _, _, username = user_payload_bytes.decode("utf-8").split(":")
@@ -516,7 +516,7 @@ class Gateway():
             "encoded_public_key": encoded_public_key,
         }
         self.send(payload)
-        logger.debug("Initialized aut session")
+        logger.debug("Initialized auth session")
 
 
     def get_state(self):
@@ -535,7 +535,7 @@ class Gateway():
 
 
     def get_ticket(self):
-        """Get authentication ticket that can be exchanged for authenticatin token"""
+        """Get authentication ticket that can be exchanged for authentication token"""
         return self.ticket
 
 
