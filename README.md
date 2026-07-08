@@ -436,7 +436,7 @@ Built endcord binary will be few MB smaller and run a little faster.
 ### Free-threaded Python
 Endcord does work with free-threaded python (3.14 only), and it significantly improves media player performance with large video resolutions, by allowing decoding, video and sound playing to be run in separate CPU threads, completely removing crackling sound when playing on high "terminal resolution".  
 This comes at the cost of much larger binary, increased CPU and RAM usage.  
-Currently nuitka [doesn't support free-threaded mode](<https://github.com/Nuitka/Nuitka/issues/3062>) yet. Pyinstaller (without `--nutka` flag) does build it successfully.  
+Currently nuitka [doesn't support free-threaded mode](<https://github.com/Nuitka/Nuitka/issues/3062>) yet. Pyinstaller (without `--nuitka` flag) does build it successfully.  
 To make it use freethreaded python run `python build.py` (not `uv`!) with `--freethreaded` argument.  
 
 ### Building without rust
@@ -463,7 +463,9 @@ Endcord does its best to avoid causing any suspicious activity, so using it as-i
 - Do not use `--token` flag, endcord automatically refreshes token stored with profile manager, so there is no need to update it manually.
 - `anonymous` mode in `client_properties` setting might be more risky than `default` mode.
 - Do not set invalid `custom_user_agent` setting, and try to match it with your OS.
-- Do not use public proxy, like VPN or TOR.  
+- Do not use public proxy, like VPN or especially TOR.  
+- Try to not send messages that will be blocked by filter rules in servers.
+- Try to not get blocked by someone.
 
 ### What if you get banned?
 You can write to Discord Support team: https://dis.gd/request.  

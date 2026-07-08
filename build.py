@@ -14,12 +14,6 @@ import sys
 import tomllib
 from importlib.metadata import distribution
 
-PYTHON_MAX_MINOR = 14
-PYTHON_FREETHREADED = 14
-PYTHON_LAST_SAFE = 13
-PYTHON_PATCH = 6
-CURSES_TAG = "v6_6_20260627"
-
 CUSTOM_CFLAGS = [
     "-DNDEBUG",
     "-g0",
@@ -54,6 +48,16 @@ if sys.platform.startswith("android"):
     sys.platform = "linux"
 if "bsd" in sys.platform:
     sys.platform = "linux"
+
+
+def load_build_config():
+    """Load build config from pyproject.toml"""
+    if os.path.exists("pyproject.toml"):
+        with open("pyproject.toml", "rb") as f:
+            data = tomllib.load(f)
+        return data.get("tool", {}).get("build", {})
+    print("pyproject.toml file not found", file=sys.stderr)
+    sys.exit(1)
 
 
 def get_app_name():
@@ -142,6 +146,13 @@ def supports_color():
     return os.getenv("TERM", "") != "dumb"
 
 
+build_config = load_build_config()
+
+PYTHON_MAX_MINOR = build_config.get("python_max", "3.14.6").split(".")[1]
+PYTHON_PATCH = build_config.get("python_max", "3.14.6").split(".")[2]
+PYTHON_FREETHREADED = build_config.get("python_freethreaded", "3.14").split(".")[1]
+PYTHON_LAST_SAFE = build_config.get("python_last_safe", "3.13").split(".")[1]
+CURSES_TAG = build_config.get("curses_tag", "v6_6_20260627")
 PKGNAME = get_app_name()
 PKGVER = get_version_number()
 USE_COLOR = supports_color()
@@ -156,7 +167,7 @@ def fprint(text, color_code=PURPLE, prefix=f"[{PKGNAME.capitalize()} Build Scrip
 
 
 def check_python():
-    """Check python version and print warning, and return True if runing inside pure python (no uv)"""
+    """Check python version and print warning, and return True if running inside pure python (no uv)"""
     if sys.version_info.major != 3:
         print(f"Python {sys.version_info.major} is not supported. Only Python 3 is supported.", file=sys.stderr)
         sys.exit(1)
@@ -173,9 +184,9 @@ def check_python():
             fprint(f"Using Python {get_nice_python_version()}")
         if not is_gil_enabled():
             if sys.version_info.minor == PYTHON_FREETHREADED:
-                fprint("WARNING: While endcord works with freethreaded python, final binary is much larger. Nutka doesnt yet support freethreaded python, so build is likely to fail.", color_code=RED)
+                fprint("WARNING: While endcord works with freethreaded python, final binary is much larger. Nuitka doesnt yet support freethreaded python, so build is likely to fail.", color_code=RED)
             else:
-                fprint(f'WARNING: Endcord is known to only build with freethreaded python version 3.{PYTHON_FREETHREADED}. Buil is likely to fail on other versions. Run "python build.py" to let uv download and setup recommended temporary python interpreter, optionally with flag "--freethreaded".', color_code=RED)
+                fprint(f'WARNING: Endcord is known to only build with freethreaded python version 3.{PYTHON_FREETHREADED}. Build is likely to fail on other versions. Run "python build.py" to let uv download and setup recommended temporary python interpreter, optionally with flag "--freethreaded".', color_code=RED)
         return False
 
     try:
@@ -292,7 +303,7 @@ def force_ujson():
 
 
 def build_third_party_licenses(exclude=[]):
-    """Collect and build all lincenses found in venv into THIRD_PARTY_LICENSES.txt file"""
+    """Collect and build all licenses found in venv into THIRD_PARTY_LICENSES.txt file"""
     fprint("Building list of third party licenses")
     subprocess.run(["uv", "pip", "install", "pip-licenses"], check=True)
     command = [
@@ -609,10 +620,28 @@ def build_custom_python(version, clang, curses):
         raise subprocess.CalledProcessError(process.returncode, cmd)
 
 
+def build_genertic_package(package, clang, safe=False):
+    """Build any python C compiled package with custom compiler args to reduce final binary size"""
+    if sys.platform != "linux":
+        return
+    fprint(f"Building {package} with custom compiler args")
+    setup_compiler(clang, safe=safe)
+    subprocess.run(["uv", "-q", "pip", "install", "pip"], check=True)   # because uv wont work with --config-settings as it should
+    try:
+        python = ".venv/bin/python" if sys.platform != "win32" else r".venv\Scripts\python.exe"
+        subprocess.run([python, "-m", "pip", "uninstall", "--yes", package], check=True)
+        subprocess.run([python, "-m", "pip", "install", "--no-cache-dir", "--no-binary=:all:", package], check=True)
+    except subprocess.CalledProcessError as e:   # fallback
+        print(e, flush=True)
+        print(f"Failed building {package}, falling back to default prebuilt version", flush=True)
+        subprocess.run(["uv", "-q", "pip", "install", package], check=True)
+    subprocess.run(["uv", "-q", "pip", "uninstall", "pip"], check=True)
+
+
 def build_numpy_lite(clang):
     """Build numpy without openblass to reduce final binary size"""
     if sys.platform != "linux":
-        fprint("Skipping numpy lite (no openblas) building on non-linux platforms")
+        fprint("Skipping numpy-lite (no openblas) building on non-linux platforms")
         return
     fprint("Building numpy-lite (no openblas)")
     check_openblas_cmd = [
@@ -621,18 +650,15 @@ def build_numpy_lite(clang):
     ]   # check if numpy without blas is not already installed
     value = subprocess.run(check_openblas_cmd, capture_output=True, text=True, check=False).stdout.strip()
     if not value or not int(value):
-        print("Numpy-lite (no openblas) is already built", flush=True)
+        print("Numpy-lite (no openblas) is already built locally", flush=True)
         return
     setup_compiler(clang)
     subprocess.run(["uv", "pip", "install", "pip"], check=True)   # because uv wont work with --config-settings as it should
     try:
-        if sys.platform == "win32":
-            python_interpreter = r".venv\Scripts\python.exe"
-        else:
-            python_interpreter = ".venv/bin/python"
-        subprocess.run([python_interpreter, "-m", "pip", "uninstall", "--yes", "numpy"], check=True)
+        python = ".venv/bin/python" if sys.platform != "win32" else r".venv\Scripts\python.exe"
+        subprocess.run([python, "-m", "pip", "uninstall", "--yes", "numpy"], check=True)
         subprocess.run([
-            python_interpreter, "-m", "pip", "install", "numpy",
+            python, "-m", "pip", "install", "numpy",
             "--no-cache-dir",
             "--no-binary=:all:",
             "--config-settings=setup-args=-Dblas=none",
@@ -642,32 +668,11 @@ def build_numpy_lite(clang):
     except subprocess.CalledProcessError as e:   # fallback
         print(e, flush=True)
         print("Failed building numpy-lite (no openblas), faling back to default numpy", flush=True)
-        subprocess.run(["uv", "pip", "install", "numpy"], check=True)
+        subprocess.run(["uv", "-q", "pip", "install", "numpy"], check=True)
     value = subprocess.run(check_openblas_cmd, capture_output=True, text=True, check=False).stdout.strip()
     if value and int(value):
         print("Verification failed: numpy after building is still linked to openblas!", flush=True)
-    subprocess.run(["uv", "pip", "uninstall", "pip"], check=True)
-
-
-def build_package(package, clang, safe=False):
-    """Build any python C compiled package with custom compiler args to reduce final binary size"""
-    if sys.platform != "linux":
-        return
-    fprint(f"Building {package} with custom compiler args")
-    setup_compiler(clang, safe=safe)
-    subprocess.run(["uv", "pip", "install", "pip"], check=True)   # because uv wont work with --config-settings as it should
-    try:
-        if sys.platform == "win32":
-            python_interpreter = r".venv\Scripts\python.exe"
-        else:
-            python_interpreter = ".venv/bin/python"
-        subprocess.run([python_interpreter, "-m", "pip", "uninstall", "--yes", package], check=True)
-        subprocess.run([python_interpreter, "-m", "pip", "install", "--no-cache-dir", "--no-binary=:all:", package], check=True)
-    except subprocess.CalledProcessError as e:   # fallback
-        print(e, flush=True)
-        print(f"Failed building {package}, faling back to default prebuilt version", flush=True)
-        subprocess.run(["uv", "pip", "install", package], check=True)
-    subprocess.run(["uv", "pip", "uninstall", "pip"], check=True)
+    subprocess.run(["uv", "-q", "pip", "uninstall", "pip"], check=True)
 
 
 def build_cython(clang, mingw):
@@ -689,7 +694,7 @@ def build_cython(clang, mingw):
     )
     for line in process.stdout:
         line_clean = line.rstrip("\n")
-        if len(line_clean) < 100 and not any(s in line_clean for s in ("Cythonizing", "Compiling", "creating", "  warn(")):
+        if len(line_clean) < 100 and not any(s in line_clean for s in ("Cythonizing", "Compiling", "creating", "  warn(", "build_ext")):
             print(line_clean, flush=True)
     process.wait()
     if process.returncode != 0:
@@ -792,14 +797,14 @@ def build_with_nuitka(onedir, clang, mingw, nosoundcard, compile_deps, print_cmd
         if compile_deps:
             build_numpy_lite(clang)
             if check_venv_file_size("Crypto", "_chacha", 10000):
-                build_package("pycryptodome", clang, safe=True)
+                build_genertic_package("pycryptodome", clang, safe=True)
             else:
-                print("Pycryptodome is already compiled locally", flush=True)
+                print("Pycryptodome is already built locally", flush=True)
             if full:
                 if check_venv_file_size("pynacl", "_sodium.", 1000000):
-                    build_package("pynacl", clang)
+                    build_genertic_package("pynacl", clang)
                 else:
-                    print("PyNaCl is already compiled locally", flush=True)
+                    print("PyNaCl is already built locally", flush=True)
         patch_soundcard()
         emoji_path = compress_emoji()
     else:
@@ -918,7 +923,7 @@ def parser():
     parser.add_argument(
         "--lite",
         action="store_true",
-        help="change environment to build or run endcord-lite, by deleting voice call and media support depenencies",
+        help="change environment to build or run endcord-lite, by deleting voice call and media support dependencies",
     )
     parser.add_argument(
         "--onedir",
@@ -943,7 +948,7 @@ def parser():
     parser.add_argument(
         "--nosoundcard",
         action="store_true",
-        help="build without soundcard dependency, for super lightewight build, will enable lite mode, and notifications sound wont work unless pw-cat (pipewire) or paplay (pulseaudio) is installed on linux, and not at all on windows",
+        help="build without soundcard dependency, for super lightweight build, will enable lite mode, and notifications sound wont work unless pw-cat (pipewire) or paplay (pulseaudio) is installed on linux, and not at all on windows",
     )
     parser.add_argument(
         "--mingw",
@@ -963,7 +968,7 @@ def parser():
     parser.add_argument(
         "--safe",
         action="store_true",
-        help=f"Use python 3.{PYTHON_LAST_SAFE} which is known to build endcord without any issues",
+        help=f"Use python 3.{PYTHON_LAST_SAFE} which is known to build endcord without any issues (disables --custom-python)",
     )
     parser.add_argument(
         "--nobuild",

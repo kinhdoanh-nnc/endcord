@@ -237,7 +237,7 @@ def normalize_keybindings(keybindings):
 
 
 def deduplicate_keybindings(keybindings_a, keybindings_b, command=False):
-    """Deduplicate 2 keubinding dicts that can have strings and tuples of strings inside a first element of tuple as values, keeping keybindings_b"""
+    """Deduplicate 2 keybinding dicts that can have strings and tuples of strings inside a first element of tuple as values, keeping keybindings_b"""
     def deduplicate_value(dedupe_value, keybindings):
         for key, outer_tuple in keybindings.items():
             if not isinstance(outer_tuple, tuple) or not outer_tuple:

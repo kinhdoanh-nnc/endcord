@@ -21,6 +21,12 @@ dependencies = [
     "psutil>=7.2.2; sys_platform != 'linux'",
 ]
 
+[tool.build]
+python_max = "3.14.6"
+python_freethreaded = "3.14.6"
+python_last_safe = "3.13.15"
+curses_tag = "v6_6_20260627"
+
 [dependency-groups]
 build = [
     "cython>=3.2.8",

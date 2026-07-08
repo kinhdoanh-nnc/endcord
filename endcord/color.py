@@ -41,7 +41,7 @@ def int_to_rgb(int_color):
 
 
 def hex_to_rgb(hex_str):
-    """Convert hexadecimal color strin to rgb tuple"""
+    """Convert hexadecimal color string to rgb tuple"""
     hex_str = hex_str.lstrip("#")
     return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
 
@@ -174,7 +174,7 @@ def color_palette_internal(screen):
             if y >= h:
                 break
 
-        # ckeck key
+        # chkeck key
         key_code = screen.getch()
         if key_code == 32:   # space
             draw_bg = not draw_bg

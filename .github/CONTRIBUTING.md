@@ -224,10 +224,12 @@ Gateway returns error code 4000 if event "update presence" (opcode 3) is sent.
 
 ## Build steps for package maintainers
 1. Download and build custom python with recent ncurses (optional)
-- Clang is optional everywhere, but it's recommended as it provides better binary.
-- The entire process is done by `tools/build_python.sh`. to run it: `bash tools/build_python.sh 3.14.5 clang curses v6_6_20260627` (you can read curses tag from build.py, its near the top).
+- Clang is optional everywhere, but it's recommended as it provides better and smaller binary.
+- The entire process is done by `tools/build_python.sh`. to run it: `bash tools/build_python.sh 3.14.5 clang curses v6_6_20260627`
+- Python version and curses tag should be read from `pyproject.toml`, under `[tool.build]` section.
+- `build_python.sh` can be run in network isolation if: there is `build` dir and there are python and curses source archives in it. Wget will skip download if the names are matching. Check `build_python.sh` for download urls.
 - Python will be installed in `./.cpython/bin/python3.14`.
-- Once finished just configure venv to use `./.cpython/bin/python3.14`
+- Once finished just configure venv to use `./.cpython/bin/python3.14`.
 
 2. Setup dependencies
 - Linux system build dependencies when using nuitka (recommended): `clang` (or gcc), `patchelf` (DO NOT use v0.18.x).
