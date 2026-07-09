@@ -958,10 +958,10 @@ def parser():
     parser.add_argument(
         "--level",
         type=str,
-        default="LITE",
+        default="FULL",
         choices=["FULL", "MEDIUM", "LITE", "MINI", "MICRO"],
         help=(
-            'Change environment to build a specified level of encord.\n'
+            'Change environment to build a specified level of endcord.\n'
             'Options:\n'
             '  "FULL"   - Has media and voice call support.\n'
             '  "MEDIUM" - No media and voice call support, but can display images.\n'
