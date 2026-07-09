@@ -158,7 +158,7 @@ jobs:
             [[ "${{ matrix.nuitka }}" == "true" ]] && args+=("--nuitka")
             [[ "${{ matrix.clang }}" != "true" ]] && args+=("--noclang")
             [[ "${{ runner.os }}" == "Linux" ]] && args+=("--custom-python")
-            uv run build.py "${args[@]}"
+            uv run build.py --level=FULL "${args[@]}"
 
       - name: Run build lite script
         shell: bash
