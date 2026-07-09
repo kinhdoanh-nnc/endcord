@@ -282,7 +282,7 @@ def setup_dependencies(level, set_dev):
     """Setup first stage of dependencies based on provided level"""
     restore_file("pyproject.toml", ".pyproject.toml.bak")
 
-    if level == "FULL" and not (check_deps("av", "dave", "PIL", "nacl") or (set_dev and not check_deps("nuitka"))):
+    if level == "FULL" and (not check_deps("av", "dave", "PIL", "nacl") or (set_dev and not check_deps("nuitka"))):
         subprocess.run(["uv", "sync", "--group=media"] + (["--group=build"] if set_dev else []), check=True)
 
     elif level == "MEDIUM" and (not check_deps("PIL") or check_deps("av") or (set_dev and not check_deps("nuitka"))):
