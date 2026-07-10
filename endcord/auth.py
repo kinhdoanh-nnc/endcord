@@ -334,14 +334,23 @@ class Gateway():
 
     def connect_ws(self):
         """Connect to websocket"""
-        self.ws = websocket.WebSocket()
-        if self.proxy.scheme:
+        if sys.platform == "darwin":
+            import certifi
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+        else:
+            ssl_context = ssl.create_default_context()
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        self.ws = websocket.WebSocket(sslopt={"context": ssl_context})
+        if self.proxy:
+            proxy = urllib.parse.urlsplit(self.proxy)
+            scheme = proxy.scheme
             self.ws.connect(
                 self.gateway_url + "/?v=2",
                 header=self.header,
-                proxy_type=self.proxy.scheme,
-                http_proxy_host=self.proxy.hostname,
-                http_proxy_port=self.proxy.port,
+                proxy_type="socks5h" if scheme == "socks5" else "http" if scheme == "https" else scheme,
+                http_proxy_host=proxy.hostname,
+                http_proxy_port=proxy.port,
+                http_proxy_auth=(proxy.username, proxy.password) if proxy.username else None,
             )
         else:
             self.ws.connect(self.gateway_url + "/?v=2", header=self.header)

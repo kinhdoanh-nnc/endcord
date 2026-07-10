@@ -2,10 +2,8 @@
 # Source-available under the Endcord License. See LICENSE for terms.
 # Redistribution of modified versions is not permitted.
 
-from endcord import peripherals
 import base64
 import gc
-import http.client
 import logging
 import random
 import socket
@@ -17,6 +15,8 @@ import time
 import traceback
 import urllib.parse
 import zlib
+
+from endcord import peripherals
 
 try:
     import orjson as json

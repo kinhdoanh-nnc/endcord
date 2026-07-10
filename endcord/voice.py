@@ -8,7 +8,9 @@ import os
 import queue
 import random
 import socket
+import ssl
 import struct
+import sys
 import threading
 import time
 import urllib.parse
@@ -18,8 +20,9 @@ import av
 import dave
 import nacl.bindings
 import numpy as np
-import socks
 import websocket
+
+from endcord import socks
 
 # import davey   # using dave.py instead
 
@@ -116,7 +119,7 @@ class Gateway():
             "Sec-WebSocket-Extensions: permessage-deflate",
             f"User-Agent: {user_agent}",
         ]
-        self.proxy = urllib.parse.urlsplit(proxy)
+        self.proxy = proxy
         self.run = True
         self.state = 0
         self.heartbeat_received = True
@@ -157,13 +160,8 @@ class Gateway():
     def create_udp_socket(self):
         """Create udp soocket to the server"""
         if self.proxy.scheme:
-            if "socks" in self.proxy.scheme.lower():
-                self.udp = socks.socksocket(socket.AF_INET, socket.SOCK_DGRAM)
-                self.udp.set_proxy(
-                    proxy_type=socks.SOCKS5,
-                    addr=self.proxy.hostname,
-                    port=self.proxy.port,
-                )
+            if self.proxy.startswith("socks"):
+                self.udp = socks.Socks5UDPSocket(self.proxy)
             else:
                 self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 logger.warning("Only SOCKS5 proxy can be used for voice calls. This call will be made without proxy!")
@@ -239,20 +237,34 @@ class Gateway():
             self.voice_handler = None
 
 
-    def connect(self):
-        """Create initial connection to Discord gateway"""
+    def connect_ws(self):
+        """Connect to websocket"""
         gateway_url = "wss://" + self.voice_gateway_data["endpoint"]
-        self.ws = websocket.WebSocket()
-        if self.proxy.scheme:
+        if sys.platform == "darwin":
+            import certifi
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+        else:
+            ssl_context = ssl.create_default_context()
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        self.ws = websocket.WebSocket(sslopt={"context": ssl_context})
+        if self.proxy:
+            proxy = urllib.parse.urlsplit(self.proxy)
+            scheme = proxy.scheme
             self.ws.connect(
                 gateway_url + "/?v=8",
                 header=self.header,
-                proxy_type=self.proxy.scheme,
-                http_proxy_host=self.proxy.hostname,
-                http_proxy_port=self.proxy.port,
+                proxy_type="socks5h" if scheme == "socks5" else "http" if scheme == "https" else scheme,
+                http_proxy_host=proxy.hostname,
+                http_proxy_port=proxy.port,
+                http_proxy_auth=(proxy.username, proxy.password) if proxy.username else None,
             )
         else:
             self.ws.connect(gateway_url + "/?v=8", header=self.header)
+
+
+    def connect(self):
+        """Create initial connection to Discord gateway and start identification"""
+        self.connect_ws()
         self.state = 1
         self.heartbeat_interval = int(json.loads(self.ws.recv())["d"]["heartbeat_interval"])
         self.receiver_thread = threading.Thread(target=self.receiver, daemon=True)
