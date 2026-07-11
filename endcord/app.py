@@ -1434,6 +1434,8 @@ class Endcord:
                 break
         else:
             return False, False
+        if self.preloaded:
+            return False, tabbed
         if self.channel_cache[num][2]:
             cached = self.channel_cache[num]
         else:
@@ -5287,6 +5289,12 @@ class Endcord:
                 for num, message in enumerate(messages):
                     messages[num] = formatter.demojize_message(message)
             if self.need_preload and messages:
+                if self.keep_deleted and messages:
+                    self.active_channel["channel_id"] = self.state["last_channel_id"]
+                    self.active_channel["guild_id"] = self.state["last_guild_id"]
+                    messages = self.restore_deleted(messages)
+                    self.active_channel["channel_id"] = None
+                    self.active_channel["guild_id"] = None
                 self.messages = messages
                 self.preloaded = True
             self.last_message_id = self.get_chat_last_message_id()
