@@ -151,8 +151,6 @@ class Gateway():
         self.last_gateway_events_per_h = 0
         self.last_gateway_msg_per_h = 0
         self.gateway_ping_time = 0
-        self.member_count = 0
-        self.online_count = 0
         if self.bot:
             self.interactions_buffer = []
         threading.Thread(target=self.thread_guard, daemon=True, args=()).start()
@@ -1212,13 +1210,15 @@ class Gateway():
                 elif self.want_member_list and optext == "GUILD_MEMBER_LIST_UPDATE":
                     guild_id = data["guild_id"]
                     list_id = data["id"]
-                    self.member_count = data.get("member_count", 0)
-                    self.online_count = data.get("online_count", 0)
+                    member_count = data.get("member_count", 0)
+                    online_count = data.get("online_count", 0)
                     for guild_index, guild in enumerate(self.activities):
                         if guild[0] == guild_id:
+                            guild[2] = member_count
+                            guild[3] = online_count
                             break
                     else:
-                        self.activities.append([guild_id, {}])   # [guild_id, member_lists]
+                        self.activities.append([guild_id, {}, member_count, online_count])   # [guild_id, member_lists]
                         guild_index = -1
                     for memlist in data["ops"]:
                         # keeping only necessary data to reduce ram usage
@@ -2420,8 +2420,8 @@ class Gateway():
         if self.activities_changed:
             cache = self.activities_changed
             self.activities_changed = []
-            return self.activities, cache, self.member_count, self.online_count
-        return [], [], self.member_count, self.online_count
+            return self.activities, cache
+        return [], []
 
 
     def get_subscribed_activities(self):

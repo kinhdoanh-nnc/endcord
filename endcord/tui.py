@@ -1400,15 +1400,18 @@ class TUI():
         if not self.win_member_list or self.member_list_width == 2 or not title_line or (not force and title_line == self.member_list_title_text):
             return
         self.member_list_title_text = title_line
+        _, w = self.win_member_list.getmaxyx()
         y, x = self.win_member_list.getbegyx()
         y -= 1
         x += 1
-        parts = title_line.split(" ")
         if self.bordered:
+            parts = title_line.split(" ")
             self.screen.addstr(y, x, parts[0], curses.color_pair(color if color else self.default_color))
-            if len(parts) > 1:
-                self.screen.addstr(y, x + len(parts[0]), " " + parts[1], curses.color_pair(self.default_color))
+            second_text = (" " + parts[1]) if len(parts) >= 2 else ""
+            second_text += "─" * (w - len(title_line) - 2)
+            self.screen.addstr(y, x + len(parts[0]), second_text, curses.color_pair(self.default_color))
         else:   # no format for now in compact mode
+            title_line = title_line + " " * (w - len(title_line) - 2)
             self.screen.addstr(y, x, title_line, curses.color_pair(12) | self.attrib_map[12])
         self.screen.noutrefresh()
         self.need_update.set()

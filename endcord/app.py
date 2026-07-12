@@ -987,6 +987,7 @@ class Endcord:
         # select guild member list and subscribed
         if guild_id:
             if self.get_members:
+                member_count, online_count = 0, 0
                 for guild in self.members:
                     if guild[0] == guild_id:
                         if "everyone" in guild[1]:
@@ -995,9 +996,13 @@ class Endcord:
                             self.member_list = next(iter(guild[1].values()))[1]   # fix_member_list_selection
                         else:
                             self.member_list = []
+                        member_count, online_count = guild[2], guild[3]
                         break
                 else:
                     self.member_list = []
+                member_list_title = f"Members: {formatter.format_kilo(online_count)}/{formatter.format_kilo(member_count)}"[:self.member_list_width - self.tui.bordered]
+                self.tui.draw_member_list_title(member_list_title, color=self.colors[9])
+
             for guild in self.subscribed_members:
                 if guild["guild_id"] == guild_id:
                     self.current_subscribed_members = guild["members"]
@@ -2913,6 +2918,7 @@ class Endcord:
                         discord_emoji = input_text.startswith("+:<")
                         self.build_reaction(text_to_send[1 + discord_emoji:], msg_index=msg_index)
                         continue
+                    text_to_send = self.execute_extensions_methods("on_message_send", text_to_send, cache=True)[0]
                     if len(text_to_send) > self.limit_msg_len:
                         self.update_extra_line(f"Can't send a message: text is too long ({self.limit_msg_len - len(text_to_send)})", color=19)
                         self.restore_input_text = (input_text, "standard")
@@ -2979,6 +2985,7 @@ class Endcord:
                             self.update_extra_line("Attachments are still uploading", color=self.colors[9])
                             continue
                     nonce = discord.generate_nonce()
+                    self.execute_extensions_methods("on_message_send", "", cache=True)
                     self.put_to_message_sender(self.discord.send_message,
                         active_channel_id,
                         "",
@@ -8926,8 +8933,10 @@ class Endcord:
 
             # check for new member presences
             if self.get_members:
-                new_members, changed_guilds, member_count, online_count = self.gateway.get_activities()
+                new_members, changed_guilds = self.gateway.get_activities()
                 if changed_guilds:
+                    member_count = 0
+                    online_count = 0
                     self.members = new_members
                     last_index = 99
                     for guild in new_members:   # select guild
@@ -8941,7 +8950,7 @@ class Endcord:
                             else:
                                 self.member_list = []
                                 last_index = None
-
+                            member_count, online_count = guild[2], guild[3]
                             break
                     if (self.active_channel["guild_id"] in changed_guilds and self.get_members and self.state["member_list"] and
                         self.screen.getmaxyx()[1] - self.config["tree_width"] - self.member_list_width - 2 >= 32):
