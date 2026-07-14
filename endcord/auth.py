@@ -319,7 +319,7 @@ class Gateway():
             "Origin: https://discord.com",
             f"User-Agent: {user_agent}",
         ]
-        self.proxy = urllib.parse.urlsplit(proxy)
+        self.proxy = proxy
         self.run = True
         self.state = 0
         self.heartbeat_received = True
