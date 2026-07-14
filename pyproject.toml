@@ -7,7 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "websocket-client>=1.9.0",
     "python-socks>=2.8.2",
-    "filetype>=1.2.0",
     "orjson>=3.11.9",
     "soundcard>=0.4.6",
     "soundfile>=0.14.0",

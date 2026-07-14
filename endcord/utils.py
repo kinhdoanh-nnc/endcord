@@ -14,9 +14,7 @@ import subprocess
 import sys
 import time
 
-import filetype
-
-from endcord import peripherals
+from endcord import minimagic, peripherals
 
 if sys.platform.startswith("android"):
     sys.platform = "linux"
@@ -283,26 +281,22 @@ def get_dir_size(path, mb=False):
     return count, total_size
 
 
+def get_mime(path):
+    """Try to get mime type of the file"""
+    mime = minimagic.guess(path)
+    if mime:
+        return mime
+    return "unknown/unknown"
+
+
 def get_is_clip(path):
     """Get whether file is video or not"""
-    kind = filetype.guess(path)
-    if kind and kind.mime:
-        return kind.mime.split("/")[0] == "video"
+    return get_mime(path).split("/")[0] == "video"
 
 
 def get_can_play(path):
     """Get whether file can be played as media"""
-    kind = filetype.guess(path)
-    if kind and kind.mime:
-        return kind.mime.split("/")[0] in ("image", "video", "audio")
-
-
-def get_mime(path):
-    """Try to get mime type of the file"""
-    kind = filetype.guess(path)
-    if kind:
-        return kind.mime
-    return "unknown/unknown"
+    return get_mime(path).split("/")[0] in ("image", "video", "audio")
 
 
 def get_media_type(path, hint=None):
