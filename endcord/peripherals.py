@@ -29,7 +29,7 @@ try:
     logger.info(APP_NAME)
 except (AttributeError, NameError):
     APP_NAME = "endcord"
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 NO_NOTIFY_SOUND_DE = ("kde", "plasma")   # linux desktops without notification sound
 
 # platform specific code
@@ -877,20 +877,34 @@ class Player():
             self.play_thread.join()
 
 
-def make_round_image_pillow(input_path, output_path):
+def make_round_image_pillow(input_path, output_path, antialias=False):
     """Create new image with circular shape using pillow"""
     from PIL import Image, ImageDraw
-    img = Image.open(input_path).convert("RGBA")
+    img = Image.open(input_path)
+    source_format = img.format
     w, h = img.size
-    mask = Image.new("L", (w, h), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, w, h), fill=255)
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+    if antialias:
+        mask = Image.new("L", (w * 4, h * 4), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, w * 4, h * 4), fill=255)
+        mask = mask.resize((w, h), Image.Resampling.LANCZOS)
+    else:
+        mask = Image.new("L", (w, h), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, w, h), fill=255)
     result = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     result.paste(img, mask=mask)
-    result.save(output_path, "WEBP")
+    if source_format == "JPEG":
+        output_path = os.path.splitext(output_path)[0] + ".png"
+        result.save(output_path, "PNG")
+    else:
+        result.save(output_path, source_format)
+    return output_path
 
 
-def make_round_image_imagemagick(input_path, output_path):
+def make_round_image_imagemagick(input_path, output_path, antialias=False):
     """Create new image with circular shape using imagemagick"""
     subprocess.run([
         "magick", input_path,
@@ -898,6 +912,7 @@ def make_round_image_imagemagick(input_path, output_path):
             "+clone",
             "-alpha", "transparent",
             "-fill", "white",
+            "-antialias" if antialias else "+antialias",
             "-draw", "circle %[fx:w/2],%[fx:h/2] %[fx:w/2],0",
         ")",
         "-alpha", "set",
@@ -907,10 +922,28 @@ def make_round_image_imagemagick(input_path, output_path):
     ], check=True)
 
 
-def make_round_image(image_path):
+def make_round_image_graphicsmagick(input_path, output_path, antialias=False):
+    """Create new image with circular shape using graphicsmagick"""
+    result = subprocess.run(["gm", "identify", "-format", "%w %h", input_path], capture_output=True, text=True, check=True)
+    width, height = map(int, result.stdout.strip().split())
+    mask_path = output_path + "_mask.png"
+    subprocess.run([
+        "gm", "convert",
+        "-size", f"{width}x{height}",
+        "xc:transparent",
+        "-fill", "white",
+        "-antialias" if antialias else "+antialias",
+        "-draw", f"circle {width // 2},{height // 2} {width // 2},0",
+        mask_path,
+    ], check=True)
+    subprocess.run(["gm", "composite", "-compose", "In", input_path, mask_path, output_path], check=True)
+    os.remove(mask_path)
+
+
+def make_round_image(image_path, antialias=False):
     """
     Convert image to round image and delete old one, if possible.
-    Use pillow if available, fallback to imagemagick if available.
+    Use pillow if available, fallback to imagemagick or graphicsmagick if available.
     Save image as _round and delete original, and dont re-edit same image.
     """
     try:
@@ -921,18 +954,58 @@ def make_round_image(image_path):
         if importlib.util.find_spec("PIL") is not None:
             base, ext = os.path.splitext(image_path)
             save_path = base + "_round" + ext
-            make_round_image_pillow(image_path, save_path)
+            make_round_image_pillow(image_path, save_path, antialias)
             os.remove(image_path)
             return save_path
         if shutil.which("magick"):
             try:
                 base, ext = os.path.splitext(image_path)
                 save_path = base + "_round" + ext
-                make_round_image_imagemagick(image_path, save_path)
+                make_round_image_imagemagick(image_path, save_path, antialias)
+                os.remove(image_path)
+                return save_path
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
+        elif shutil.which("gm"):
+            try:
+                base, ext = os.path.splitext(image_path)
+                save_path = base + "_round" + ext
+                make_round_image_graphicsmagick(image_path, save_path, antialias)
                 os.remove(image_path)
                 return save_path
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
         return image_path
     except FileNotFoundError:   # failsafe in case file was deleted mid-conversion
+        return None
+
+
+def resize_image(image_path, h, w):
+    """Resize image inplace, use pillow if available, fallback to imagemagick if available"""
+    try:
+        if not image_path or not os.path.exists(image_path):
+            return None
+        if importlib.util.find_spec("PIL") is not None:
+            from PIL import Image
+            img = Image.open(image_path)
+            source_format = img.format
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+            result = img.resize((w, h), resample=Image.Resampling.LANCZOS)
+            result.save(image_path, source_format)
+            return image_path
+        if shutil.which("magick"):
+            try:
+                subprocess.run(["magick", image_path, "-filter", "Lanczos", "-resize", f"{w}x{h}!", image_path], check=True)
+                return image_path
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
+        elif shutil.which("gm"):
+            try:
+                subprocess.run(["gm", "convert", image_path, "-filter", "Lanczos", "-resize", f"{w}x{h}!", image_path], check=True)
+                return image_path
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
+        return image_path
+    except FileNotFoundError:
         return None
