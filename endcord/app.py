@@ -3510,17 +3510,15 @@ class Endcord:
                         break
             if not avatar_id:
                 avatar_id = self.discord.get_user(user_id, extra=True)["extra"]["avatar"]
-            if avatar_id:
-                if self.config["native_media_player"]:
-                    avatar_path = self.discord.get_pfp(user_id, avatar_id)
-                else:
-                    avatar_path = self.discord.get_pfp(user_id, avatar_id, size=128)
-                if avatar_path is None:
-                    self.gateway.set_offline()
-                    self.update_extra_line("Network error", color=20)
-                elif avatar_path:
-                    self.media_thread = threading.Thread(target=self.open_media, daemon=True, args=(avatar_path, ))
-                    self.media_thread.start()
+            if self.config["native_media_player"]:
+                avatar_path = self.discord.get_pfp(user_id, avatar_id)
+            else:
+                avatar_path = self.discord.get_pfp(user_id, avatar_id, size=128)
+            if avatar_path is None:
+                self.update_extra_line("CDN connection error", color=20)
+            elif avatar_path:
+                self.media_thread = threading.Thread(target=self.open_media, daemon=True, args=(avatar_path, ))
+                self.media_thread.start()
 
         elif cmd_type == 27:   # CHECK_STANDING
             standing, violations = self.discord.get_my_standing()
@@ -5644,8 +5642,7 @@ class Endcord:
             self.media_thread = threading.Thread(target=self.open_media, daemon=True, args=(emoji_path, ))
             self.media_thread.start()
         elif emoji_path is None:
-            self.gateway.set_offline()
-            self.update_extra_line("Network error", color=20)
+            self.update_extra_line("CDN connection error", color=20)
 
 
     def build_reaction(self, text, msg_index=None):
@@ -5935,7 +5932,10 @@ class Endcord:
                 match = re.search(match_last_parentheses, line[0])
                 if match:
                     start, end = match.span()
-                    extra_format.append([(color_low, None, start, end + 4)])
+                    if self.placeholder_emoji and line[1].startswith("<:"):
+                        extra_format.append([(color_low, None, start + 5, end + 6)])
+                    else:
+                        extra_format.append([(color_low, None, start - 1, end + 4)])
                 else:
                     extra_format.append(None)
 
