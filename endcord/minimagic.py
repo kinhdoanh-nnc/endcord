@@ -132,6 +132,3 @@ def guess(obj):
     if isinstance(obj, str):
         import mimetypes
         return mimetypes.guess_type(obj)[0]
-
-
-print(guess("/home/mzivic/test.png"))
