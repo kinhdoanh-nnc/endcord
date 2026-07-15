@@ -2265,11 +2265,12 @@ class Gateway():
                 "self_mute": mute,
                 "self_deaf": False,
                 "self_video": video,
-                "preferred_regions": preferred_regions,
-                "preferred_region": preferred_regions[0],
                 "flags": VOICE_FLAGS,
             },
         }
+        if preferred_regions:
+            payload["d"]["preferred_regions"] = preferred_regions
+            payload["d"]["preferred_region"] = preferred_regions[0]
         self.send(payload)
         self.voice_gateway_data_ready = 0
         logger.debug("Sending voice mute update")
