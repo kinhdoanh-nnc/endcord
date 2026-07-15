@@ -991,10 +991,10 @@ class Endcord:
                 member_count, online_count = 0, 0
                 for guild in self.members:
                     if guild[0] == guild_id:
-                        if "everyone" in guild[1]:
-                            self.member_list = guild[1]["everyone"][1]
-                        elif guild[1]:
-                            self.member_list = next(iter(guild[1].values()))[1]   # fix_member_list_selection
+                        permission_overwrites = self.current_channel.get("permission_overwrites", [])
+                        member_list_id = perms.compute_member_list_id(permission_overwrites)
+                        if member_list_id and member_list_id in guild[1]:
+                            self.member_list = guild[1][member_list_id][1]
                         else:
                             self.member_list = []
                         member_count, online_count = guild[2], guild[3]
@@ -1473,8 +1473,12 @@ class Endcord:
     def toggle_tab(self, channel_id, guild_id, add_tab=False):
         """Toggle tabbed state of currently active channel"""
         channel = None
-        if guild_id and guild_id in self.guilds:
-            channel = self.guilds[guild_id]["channels"].get(channel_id)
+        for guild in self.guilds:
+            if guild["guild_id"] == guild_id:
+                for channel in guild["channels"]:
+                    if channel["id"] == channel_id:
+                        break
+                break
         if channel and channel["type"] in (15, 16):   # skip forums
             return
 
@@ -8946,12 +8950,11 @@ class Endcord:
                     last_index = 99
                     for guild in new_members:   # select guild
                         if guild[0] == self.active_channel["guild_id"]:
-                            if "everyone" in guild[1]:
-                                self.member_list = guild[1]["everyone"][1]
-                                last_index = guild[1]["everyone"][0]
-                            elif guild[1]:
-                                self.member_list = next(iter(guild[1].values()))[1]   # fix_member_list_selection
-                                last_index = next(iter(guild[1].values()))[0]
+                            permission_overwrites = self.current_channel.get("permission_overwrites", [])
+                            member_list_id = perms.compute_member_list_id(permission_overwrites)
+                            if member_list_id and member_list_id in guild[1]:
+                                self.member_list = guild[1][member_list_id][1]
+                                last_index = guild[1][member_list_id][0]
                             else:
                                 self.member_list = []
                                 last_index = None
