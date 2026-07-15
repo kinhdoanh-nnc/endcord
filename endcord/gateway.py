@@ -320,7 +320,7 @@ class Gateway():
         """Create initial connection to Discord gateway"""
         try:
             header = {"Priority": "u=1", "User-Agent": self.user_agent}
-            connection = peripherals.get_connection(self.host, timeout=3, proxy=None)
+            connection = peripherals.get_connection(self.host, timeout=3, proxy=self.proxy)
             connection.request("GET", "/api/v9/gateway", headers=header)   # subscribe works differently in v10
         except (socket.gaierror, TimeoutError, ConnectionResetError):
             connection.close()
@@ -2226,11 +2226,12 @@ class Gateway():
                 "self_mute": mute,
                 "self_deaf": False,
                 "self_video": video,
-                "preferred_regions": preferred_regions,
-                "preferred_region": preferred_regions[0],
                 "flags": VOICE_FLAGS,
             },
         }
+        if preferred_regions:
+            payload["d"]["preferred_regions"] = preferred_regions
+            payload["d"]["preferred_region"] = preferred_regions[0]
         self.send(payload)
         self.voice_gateway_data_ready = 1
         logger.debug("Requesting voice gateway")

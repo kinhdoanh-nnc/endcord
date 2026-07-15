@@ -327,13 +327,16 @@ def build_third_party_licenses(exclude=[]):
     subprocess.run(["uv", "pip", "install", "pip-licenses"], check=True)
     command = [
         "uv", "run", "pip-licenses",
-        "--ignore-packages " + " ".join(exclude),
+        "--ignore-packages", *exclude,
         "--format=plain-vertical",
         "--no-license-path",
+        "--with-license-file",
         "--output-file=THIRD_PARTY_LICENSES.txt",
     ]
     subprocess.run(command, check=True)
     subprocess.run(["uv", "pip", "uninstall", "pip-licenses", "prettytable", "wcwidth"], check=True)
+    shutil.rmtree("build")
+    sys.exit(0)
 
 
 def get_cython_bins(directory="endcord_cython", startswith=None):
@@ -1096,7 +1099,7 @@ if __name__ == "__main__":
             fprint(f"Failed building cython extensions, error: {e}")
 
     if args.build_licenses:
-        exclude = ["ordered-set", "zstandard", "altgraph", "packaging", "pyinstaller-hooks-contrib", "packaging", "setuptools"]
+        exclude = ["cython", "altgraph", "packaging", "pyinstaller", "pyinstaller-hooks-contrib", "packaging", "setuptools"]
         build_third_party_licenses(exclude)
 
     if not args.nobuild:

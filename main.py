@@ -24,12 +24,15 @@ default_config_path = peripherals.config_path
 log_path = peripherals.log_path
 threading.stack_size(512 * 1024)
 uses_pgcurses = hasattr(curses, "PGCURSES")
+log_file_path = os.path.join(os.path.expanduser(log_path), APP_NAME + ".log")
 run = True
 
+if os.path.exists(log_file_path):
+    os.rename(log_file_path, log_file_path[:-4] + "-prev.log")
 logger = logging
 logging.basicConfig(
     level="INFO",
-    filename=os.path.expanduser(os.path.join(log_path, APP_NAME + ".log")),
+    filename=os.path.expanduser(log_file_path),
     encoding="utf-8",
     filemode="w",
     format="{asctime} - {levelname}\n  [{module}]: {message}\n",

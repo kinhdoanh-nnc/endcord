@@ -14,8 +14,9 @@ import time
 import traceback
 from queue import Queue
 
-import filetype
 from PIL import Image, ImageEnhance
+
+from endcord import minimagic
 
 try:
     import av
@@ -43,9 +44,9 @@ match_youtube = re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch
 
 def get_mime(path):
     """Try to get mime type of the file"""
-    kind = filetype.guess(path)
-    if kind:
-        return kind.mime
+    mime = minimagic.guess(path)
+    if mime:
+        return mime
     return "unknown/unknown"
 
 
