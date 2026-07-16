@@ -181,17 +181,19 @@ def generate_relative_time(timestamp):
     return time_string
 
 
-def format_seconds(seconds, nice=False):
+def format_seconds(seconds, nice=False, pad=True):
     """Convert seconds to hh:mm:ss or HHh MMm SSs"""
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     secs = seconds % 60
     parts = []
+    fmt = "02d" if pad else "d"
     if hours:
-        parts.append(f"{hours:02d}" + ("h" if nice else ""))
+        parts.append(f"{hours:{fmt}}" + ("h" if nice else ""))
     if minutes or hours:
-        parts.append(f"{minutes:02d}" + ("m" if nice else ""))
-    parts.append(f"{secs:02d}" + ("s" if nice else ""))
+        if pad:
+            parts.append(f"{minutes:{fmt}}" + ("m" if nice else ""))
+    parts.append(f"{secs:{fmt}}" + ("s" if nice else ""))
     if nice:
         return " ".join(parts)
     return ":".join(parts)
@@ -1857,6 +1859,7 @@ class ChatGenerator:
             code_snippets = []
             code_blocks = []
             urls = []
+        embeds = []
         image_locations = []
         embed_marker_ranges = []
         for num_e, embed in enumerate(message["embeds"]):
@@ -1873,6 +1876,12 @@ class ChatGenerator:
                     elif self.trim_embed_url_size:
                         embed_url = trim_string(embed_url, self.trim_embed_url_size)
                     embed_type = clean_type(embed["type"])
+                    if embed_type.lower() not in ("image", "video"):
+                        embed_type = "file"
+                        embed_url = embed.get("name", "")
+                        if embed.get("duration"):
+                            embed_url += f" ({format_seconds(embed["duration"], nice=True, pad=False)})"
+                        embeds.append([len(content), len(content) + len(embed_type) + 15 + len(embed_url)])
                     embed_marker_ranges.append([len(content), len(content) + len(embed_type) + 14])
                     content += f"[{embed_type} attachment]: {embed_url}"
                 elif embed["type"] == "rich":
@@ -1970,6 +1979,7 @@ class ChatGenerator:
             move_by_indexes(
                 md_indexes,
                 urls,
+                embeds,
                 spoilers,
                 code_snippets,
                 code_blocks,
@@ -1987,6 +1997,7 @@ class ChatGenerator:
                 escaped_indexes,
                 md_format,
                 urls,
+                embeds,
                 spoilers,
                 code_snippets,
                 code_blocks,
@@ -2065,7 +2076,7 @@ class ChatGenerator:
             message_line = message_line.ljust(max_length-1)
 
         chat.append(message_line)
-        urls_this_line = fix_map_ranges(ranges_multiline_one_line(urls, newline_index+1, 0, quote), message_line)
+        urls_this_line = fix_map_ranges(ranges_multiline_one_line(urls + embeds, newline_index+1, 0, quote), message_line)
         spoilers_this_line = fix_map_ranges(ranges_multiline_one_line(spoilers, newline_index+1, 0, quote), message_line)
         emoji_this_line = fix_map_ranges(ranges_multiline_one_line(emoji_ranges, newline_index+1, 0, quote), message_line)
         mentions_this_line = fix_map_ranges(ranges_multiline_one_line(mention_ranges, newline_index+1, 0, quote), message_line)
@@ -2146,6 +2157,7 @@ class ChatGenerator:
                 content_index_correction,
                 md_format,
                 urls,
+                embeds,
                 spoilers,
                 code_snippets,
                 code_blocks,
@@ -2210,7 +2222,7 @@ class ChatGenerator:
             len_new_line = len(new_line)
 
             chat.append(new_line)
-            urls_this_line = fix_map_ranges(ranges_multiline_one_line(urls, len_new_line, self.newline_len, quote), new_line)
+            urls_this_line = fix_map_ranges(ranges_multiline_one_line(urls + embeds, len_new_line, self.newline_len, quote), new_line)
             spoilers_this_line = fix_map_ranges(ranges_multiline_one_line(spoilers, len_new_line, self.newline_len, quote), new_line)
             emoji_this_line = fix_map_ranges(ranges_multiline_one_line(emoji_ranges, len_new_line, self.newline_len, quote), new_line)
             mentions_this_line = fix_map_ranges(ranges_multiline_one_line(mention_ranges, len_new_line, self.newline_len, quote), new_line)

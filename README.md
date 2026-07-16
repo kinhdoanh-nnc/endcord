@@ -236,7 +236,7 @@ To add default emoji in message just type its name or alias, like this: `:thumbs
 For now, there is no emoji assist, but it is planned.  
 Emoji names can be found [here](https://unicode.org/emoji/charts/full-emoji-list.html) and aliases [here](https://www.webfx.com/tools/emoji-cheat-sheet/).  
 
-# s/ replacements with regex
+### s/ replacements with regex
 Type `s/old/new` as a message and send it to edit your last message by replacing `old` with `new`.  
 Note that this is using regex. And is very similar to how sed works.  
 Features other than full regex support:
@@ -246,7 +246,7 @@ Features other than full regex support:
 - `&` in the replacement portion represents the entire matched pattern from the search portion
 - `\NUMBER` in the replacement portion represents capture groups in the search portion
 
-# Tabs
+### Tabs
 Tabs are "pinned" channels in channel cache, and are counted in channel cache limit.  
 Currently active channel can be un/tabbed with `Alt+B`.  
 To switch to any tabbed channel use `Alt+NUM`, where `NUM` is tab number (use keys in number row).
@@ -534,7 +534,8 @@ RAM usage greatly depends on multiple factors:
 Simply make the launcher execute `endcord` or `endcord-lite`, endcord will deal with starting terminal. It will prefer `$TERMINAL` environment variable, then fallback to some most popular terminal emulators.
 
 ### Legacy theme
-Endcord default theme uses non-standard characters to display some TUI elements, and these characters may not work on some terminals, or look weird wih some fonts.  
+Endcord default theme uses non-standard characters to display some TUI elements, and these characters may not work on some terminals, or look weird wit
+h some fonts.  
 If that happens, use [legacy theme](themes/legacy.ini). It is used by default on windows.  
 
 ### Virus scanners are flagging endcord binaries as malware

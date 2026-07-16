@@ -12,7 +12,6 @@ Make custom json parser - remove orjson
 Fix issues with wide characters in input line
 Add multiline input line
 Add option to select individual message
-Fix per-channel member list
 Rewrite experimental mode in not-pygame
 Video, stage and stream calls
 Localization

@@ -765,7 +765,7 @@ class Gateway():
                 self.resumable = True
                 break
             self.gateway_events_per_h += 1
-            logger.debug(f"Received: opcode={opcode}, optext={response["t"] if (response and "t" in response and response["t"] and "LIST" not in response["t"]) else 'None'}")
+            logger.debug(f"Received: opcode={opcode}, optext={response["t"] if (response and "t" in response and response["t"]) else 'None'}")
             # debug_events
             # if response.get("t"):
             #     debug.save_json(response, f"{int(time.time())}_{response["t"]}.json", False)
@@ -1210,6 +1210,10 @@ class Gateway():
                 elif self.want_member_list and optext == "GUILD_MEMBER_LIST_UPDATE":
                     guild_id = data["guild_id"]
                     list_id = data["id"]
+                    try:
+                        list_id = int(list_id)
+                    except ValueError:
+                        pass
                     member_count = data.get("member_count", 0)
                     online_count = data.get("online_count", 0)
                     for guild_index, guild in enumerate(self.activities):
@@ -2265,11 +2269,12 @@ class Gateway():
                 "self_mute": mute,
                 "self_deaf": False,
                 "self_video": video,
-                "preferred_regions": preferred_regions,
-                "preferred_region": preferred_regions[0],
                 "flags": VOICE_FLAGS,
             },
         }
+        if preferred_regions:
+            payload["d"]["preferred_regions"] = preferred_regions
+            payload["d"]["preferred_region"] = preferred_regions[0]
         self.send(payload)
         self.voice_gateway_data_ready = 0
         logger.debug("Sending voice mute update")

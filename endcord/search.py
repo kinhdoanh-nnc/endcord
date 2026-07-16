@@ -606,7 +606,7 @@ def search_profiles(profiles, query, limit=50, score_cutoff=15):
     return sorted(results, key=lambda x: x[2], reverse=True)
 
 
-def search_gif(gifs, query, limit=50, score_cutoff=15, fav=True, cmd=True):
+def search_gifs(gifs, query, limit=50, score_cutoff=15, fav=True, cmd=True):
     """Search for gifs"""
     results = []
     worst_score = score_cutoff
@@ -617,15 +617,17 @@ def search_gif(gifs, query, limit=50, score_cutoff=15, fav=True, cmd=True):
         return []
     iterable = gifs if not fav else gifs.items()
     for url, data in iterable:
-        formatted = " ".join(url.split("/")[-1].split("-")[:-1])
+        if "tenor.com/" in url:
+            formatted = " ".join(url.split("/")[-1].split("-")[:-1])
+        else:
+            formatted = " ".join(url.split("/")[-1].split("-"))
+        formatted = formatted.removesuffix(" gif")
         if fav:
             preview = data["src"]
             order = data["order"]
         else:
             preview = data
             order = 0
-        if formatted.endswith("gif"):
-            formatted = formatted[:-4]
         if query:
             score = fuzzy_match_score(query, formatted)
         else:

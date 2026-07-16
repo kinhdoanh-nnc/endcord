@@ -74,7 +74,6 @@ def guess(obj):
                 return IMAGE + "avif"
             if "heic" in compatible_brands:
                 return IMAGE + "heic"
-    return None
 
     # VIDEO
     if buf.startswith(b"\x1A\x45\xDF\xA3"):
@@ -132,3 +131,4 @@ def guess(obj):
     if isinstance(obj, str):
         import mimetypes
         return mimetypes.guess_type(obj)[0]
+    return None

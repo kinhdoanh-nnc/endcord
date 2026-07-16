@@ -861,7 +861,7 @@ class Endcord:
         self.active_channel["guild_id"] = guild_id
         self.active_channel["guild_name"] = this_guild["name"] if this_guild else None
         self.active_channel["channel_id"] = channel_id
-        self.active_channel["channel_name"] = self.current_channel["name"]
+        self.active_channel["channel_name"] = self.current_channel.get("name", "Unknown")
 
         # run extensions
         self.execute_extensions_methods("on_switch_channel_start")
@@ -991,10 +991,10 @@ class Endcord:
                 member_count, online_count = 0, 0
                 for guild in self.members:
                     if guild[0] == guild_id:
-                        if "everyone" in guild[1]:
-                            self.member_list = guild[1]["everyone"][1]
-                        elif guild[1]:
-                            self.member_list = next(iter(guild[1].values()))[1]   # fix_member_list_selection
+                        permission_overwrites = self.current_channel.get("permission_overwrites", [])
+                        member_list_id = perms.compute_member_list_id(permission_overwrites)
+                        if member_list_id and member_list_id in guild[1]:
+                            self.member_list = guild[1][member_list_id][1]
                         else:
                             self.member_list = []
                         member_count, online_count = guild[2], guild[3]
@@ -1473,8 +1473,12 @@ class Endcord:
     def toggle_tab(self, channel_id, guild_id, add_tab=False):
         """Toggle tabbed state of currently active channel"""
         channel = None
-        if guild_id and guild_id in self.guilds:
-            channel = self.guilds[guild_id]["channels"].get(channel_id)
+        for guild in self.guilds:
+            if guild["guild_id"] == guild_id:
+                for channel in guild["channels"]:
+                    if channel["id"] == channel_id:
+                        break
+                break
         if channel and channel["type"] in (15, 16):   # skip forums
             return
 
@@ -3126,7 +3130,7 @@ class Endcord:
                         selected_urls.append(urls[num])
                 if not selected_urls:
                     selected_urls = self.get_stuff_from_selected_line(chat_sel, 5)
-                if len(selected_urls) == 1 or select_num:
+                if selected_urls and (len(selected_urls) == 1 or select_num):
                     select_num = max(min(select_num-1, len(selected_urls)-1), 0)
                     self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(
                         selected_urls[select_num],
@@ -3165,7 +3169,7 @@ class Endcord:
                     selected_urls.append(urls[num])
                 if not selected_urls:
                     selected_urls = self.get_stuff_from_selected_line(chat_sel, 5)
-                if len(selected_urls) == 1 or select_num:
+                if selected_urls and (len(selected_urls) == 1 or select_num):
                     select_num = max(min(select_num-1, len(selected_urls)-1), 0)
                     selected_url = self.refresh_attachment_url(selected_urls[select_num])
                     if cmd_type == 5:
@@ -3202,7 +3206,7 @@ class Endcord:
                         selected_urls.append(urls[num])
             else:
                 selected_urls = embeds
-            if len(selected_urls) == 1 or select_num:
+            if selected_urls and (len(selected_urls) == 1 or select_num):
                 select_num = max(min(select_num-1, len(selected_urls)-1), 0)
                 open_type = 2 if cmd_type == 85 else True
                 self.download_threads.append(threading.Thread(target=self.download_file, daemon=True, args=(selected_urls[select_num], False, open_type)))
@@ -6119,7 +6123,7 @@ class Endcord:
                         extra_format.append(None)
 
             elif assist_word.lower().startswith("gif "):
-                self.assist_found = search.search_gif(
+                self.assist_found = search.search_gifs(
                     self.discord.get_settings_proto(2).get("favorite_gifs", {}).get("gifs", []),
                     assist_word[4:],
                     limit=self.assist_limit,
@@ -6208,7 +6212,7 @@ class Endcord:
                 self.assist_found.append(("Provided path is invalid", True))
 
         elif assist_type == 8:   # gif search
-            self.assist_found = search.search_gif(
+            self.assist_found = search.search_gifs(
                 self.search_results if self.search_results else self.discord.get_settings_proto(2).get("favorite_gifs", {}).get("gifs", []),
                 assist_word,
                 limit=self.assist_limit,
@@ -8010,7 +8014,7 @@ class Endcord:
 
         self.joining_call = True
         self.call_participants = []
-        self.update_extra_line(custom_text="Connecting to voice server.", permanent=True)
+        self.update_extra_line(custom_text="Connecting to voice server", permanent=True)
         self.gateway.request_voice_gateway(
             guild_id,
             channel_id,
@@ -8026,7 +8030,13 @@ class Endcord:
         else:
             self.update_extra_line(permanent=True)
             self.update_extra_line("Failed to start call: gateway timeout", color=20)
-            logger.warning("Failed to start call: gateway timeout", color=20)
+            logger.warning("Failed to start call: gateway timeout")
+            self.joining_call = False
+            return
+        if not voice_gateway_data["guild_id"] or not voice_gateway_data["channel_id"]:
+            self.update_extra_line(permanent=True)
+            self.update_extra_line("Failed to start call: gateway rejected call", color=20)
+            logger.warning("Failed to start call: gateway rejected call")
             self.joining_call = False
             return
 
@@ -8940,12 +8950,11 @@ class Endcord:
                     last_index = 99
                     for guild in new_members:   # select guild
                         if guild[0] == self.active_channel["guild_id"]:
-                            if "everyone" in guild[1]:
-                                self.member_list = guild[1]["everyone"][1]
-                                last_index = guild[1]["everyone"][0]
-                            elif guild[1]:
-                                self.member_list = next(iter(guild[1].values()))[1]   # fix_member_list_selection
-                                last_index = next(iter(guild[1].values()))[0]
+                            permission_overwrites = self.current_channel.get("permission_overwrites", [])
+                            member_list_id = perms.compute_member_list_id(permission_overwrites)
+                            if member_list_id and member_list_id in guild[1]:
+                                self.member_list = guild[1][member_list_id][1]
+                                last_index = guild[1][member_list_id][0]
                             else:
                                 self.member_list = []
                                 last_index = None
